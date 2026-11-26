@@ -44,6 +44,7 @@ HRESULT CXBFontEx::CreateFromMemory(const void *data)
 // 0x00137841
 HRESULT CXBFontEx::CreateFromTTF(const wchar_t *fileName, D3DCOLOR color, DWORD height, DWORD antialiasLevel)
 {
+	CD3DLock d3dLock;   // (the skin loader's thread opens its fonts)
 	if (XFONT_OpenTrueTypeFont(fileName, TRUETYPE_CACHE_SIZE, &m_pTrueTypeFont) < 0)
 		return E_FAIL;
 	XFONT_SetTextAntialiasLevel(m_pTrueTypeFont, antialiasLevel);

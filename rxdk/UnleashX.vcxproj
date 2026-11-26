@@ -73,6 +73,11 @@
       <NoPreload>MEDIA_FILE;DEF_FONT;INT_SKINS</NoPreload>
     </ImageBld>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <AdditionalOptions>-Os %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <RxdkEmbed Include="..\assets\media.zip">
       <Name>MEDIA_FILE</Name>
@@ -591,140 +596,140 @@
     </ClCompile>
     <ClCompile Include="..\thirdparty\ftpparse\ftpparse.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_ftpparse_ftpparse.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_access.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_access.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_cache.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_cache.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_filelib.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_filelib.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_format.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_format.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_misc.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_misc.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_string.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_string.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_table.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_table.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\fat_io_lib\fat_write.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FATFS_USE_CUSTOM_OPTS_FILE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\xbox\include;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_fat_io_lib_fat_write.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\bit.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_bit.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\decoder.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_decoder.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\fixed.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_fixed.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\frame.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_frame.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\huffman.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_huffman.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\layer12.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_layer12.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\layer3.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_layer3.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\stream.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_stream.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\synth.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_synth.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\timer.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_timer.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="..\thirdparty\libmad\version.c">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks</AdditionalOptions>
+      <AdditionalOptions>-Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks -fno-asynchronous-unwind-tables -fno-unwind-tables</AdditionalOptions>
       <PreprocessorDefinitions>FPM_INTEL;HAVE_CONFIG_H;ASO_ZEROCHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RxdkAdditionalIncludeDirectories>$(ProjectDir)..\thirdparty\libmad;%(RxdkAdditionalIncludeDirectories)</RxdkAdditionalIncludeDirectories>
       <ObjectFileName>$(IntDir)thirdparty_libmad_version.obj</ObjectFileName>
@@ -1092,6 +1097,7 @@
     <ClInclude Include="..\src\common\ObList.h" />
     <ClInclude Include="..\src\common\Platform.h" />
     <ClInclude Include="..\src\common\PlatformRxdk.h" />
+    <ClInclude Include="..\src\common\PlatformWin32.h" />
     <ClInclude Include="..\src\common\StdObject.h" />
     <ClInclude Include="..\src\common\StrUtil.h" />
     <ClInclude Include="..\src\common\Thread.h" />

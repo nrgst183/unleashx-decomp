@@ -34,11 +34,48 @@ void SkinRectToFloats(int left, int top, int width, int height, float *x, float 
 	*h = (float)height;
 }
 
+// (Windows build, drawing at its window's shape) How far a skin element near
+// the layout's edge moves out to the window's: by the side bar's width, when
+// the skin has no background picture of its own (its texts and pictures
+// float over the globe; with one, they have to stay on its panels).
+// Elements in the left or right third (top or bottom, in a tall window) of
+// the layout go out; the rest, like the menu and the orb, stay centered.
+static void PinToWindowEdges(int left, int top, int width, int height, float *x, float *y)
+{
+	if (g_fPictureAspect <= 0.0f || g_skin.m_pBackground != NULL || g_skin.m_pBackgroundVideo != NULL)
+		return;
+	const SViewport &viewport = g_pSettings->m_viewport;
+	float skinWidth = (float)g_pSettings->m_nSkinWidth;
+	float skinHeight = (float)g_pSettings->m_nSkinHeight;
+	float scaleX = (float)viewport.Width / skinWidth;
+	float scaleY = (float)viewport.Height / skinHeight;
+	float scale = scaleX < scaleY ? scaleX : scaleY;
+	float gapX = ((float)viewport.Width - skinWidth * scale) * 0.5f;
+	float gapY = ((float)viewport.Height - skinHeight * scale) * 0.5f;
+	float middleX = (float)left + (float)(width > 0 ? width : 0) * 0.5f;
+	float middleY = (float)top + (float)(height > 0 ? height : 0) * 0.5f;
+	if (gapX > 0.5f && x != NULL)
+	{
+		if (middleX < skinWidth / 3.0f)
+			*x -= gapX;
+		else if (middleX > skinWidth * 2.0f / 3.0f)
+			*x += gapX;
+	}
+	if (gapY > 0.5f && y != NULL)
+	{
+		if (middleY < skinHeight / 3.0f)
+			*y -= gapY;
+		else if (middleY > skinHeight * 2.0f / 3.0f)
+			*y += gapY;
+	}
+}
+
 // (0x0009E312, then ScaleToScreen)
 void SkinRectToScreen(int left, int top, int width, int height, float *x, float *y, float *w, float *h)
 {
 	SkinRectToFloats(left, top, width, height, x, y, w, h);
 	ScaleToScreen(x, w, y, h, FALSE);
+	PinToWindowEdges(left, top, width, height, x, y);
 }
 
 // (inlined)

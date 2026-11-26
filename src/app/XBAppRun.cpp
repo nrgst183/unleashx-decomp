@@ -12,6 +12,7 @@
 #include "../common/FrameTime.h"
 #include "../common/XboxKernel.h"
 #include "../input/XBInput.h"
+#include "../render/D3D.h"
 
 // The pointer state the menus read (Menu.h).
 BOOL g_bPointerEvent;          // 0x0027213C
@@ -277,6 +278,9 @@ int CXBApplicationEx::Run()
 			swprintf(m_strFrameRate, 20, L"%0.02f fps", (double)m_fFPS);
 		}
 		FrameMove();
-		Render();
+		{
+			CD3DLock d3dLock;   // (the loaders' threads wait for the frame)
+			Render();
+		}
 	}
 }

@@ -152,6 +152,7 @@ static BOOL ReadXprHeader(HANDLE file, SXbxHeader *header)
 // 0x0009FAAF
 BOOL LoadXbeIcon(const char *xbePath, IDirect3DTexture8 **texture)
 {
+	CD3DLock d3dLock;   // (only the headers and the image are read)
 	if (texture == NULL)
 		return FALSE;
 	*texture = NULL;
@@ -275,6 +276,7 @@ BOOL SaveTextureToXpr(const char *path, IDirect3DTexture8 *texture)
 // 0x000A4D10
 BOOL ExtractXbeTitleImage(const char *xbePath, const char *outFile)
 {
+	CD3DLock d3dLock;
 	// (The original runs this in a loop left over from searching the file
 	// from its end; every way through it ends after the first pass. It
 	// also copies an uninitialized buffer into an unused string.)

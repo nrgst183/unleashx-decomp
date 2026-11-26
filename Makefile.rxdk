@@ -55,10 +55,15 @@ DEBUG ?= 0
 ifeq ($(DEBUG),1)
 OUT := build/rxdk-debug
 OPT := -O0 -g -fno-sanitize=undefined
+UX_OPT :=
 D := d
 else
 OUT := build/rxdk
 OPT := -O3 -fno-sanitize=undefined -gline-tables-only
+# The dashboard's own code is optimized for size (after $(OPT), so it wins):
+# it's mostly UI, and the XBE's sections load into the Xbox's 64 MB. The
+# third-party libraries (MP3, RAR, ZIP) keep $(OPT) for speed.
+UX_OPT := -Os
 D :=
 endif
 OBJ := $(OUT)/obj
@@ -87,10 +92,12 @@ COMMON_FLAGS = $(TARGET_FLAGS) -isystem $(RESOURCE_INC) $(OPT) $(INCS) \
 	-Wno-unused-command-line-argument -Wno-deprecated-enum-enum-conversion
 CXX_FLAGS := -x c++ -std=c++17 -nostdinc++ -fexceptions -frtti -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR \
 	-I$(SDK_INC)/c++/v1 -fms-compatibility-version=19.20 -U_WIN32 -U__MINGW32__ -D_GNU_SOURCE
-C_FLAGS := -x c -std=gnu17
+# (The C libraries never have a C++ exception pass through them: no unwind
+# tables, which only exceptions use.)
+C_FLAGS := -x c -std=gnu17 -fno-asynchronous-unwind-tables -fno-unwind-tables
 
 # UnleashX's own code: the compile-time switches the XDK build had.
-UX_FLAGS := -DNDEBUG -DDEBUG_MOUSE -DUX_RXDK -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks \
+UX_FLAGS := $(UX_OPT) -DNDEBUG -DDEBUG_MOUSE -DUX_RXDK -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks \
 	-DMEDIA_FILE_SIZE=$(call file_size,$(MEDIA_ZIP)) -DINT_SKINS_SIZE=$(call file_size,$(SKINS_ZIP)) \
 	-Wall -Wno-unknown-pragmas -Wno-delete-non-virtual-dtor -Wno-microsoft-goto -Wno-microsoft-cast \
 	-Wno-missing-braces -Wno-unused-private-field -Wno-writable-strings -Wno-pragma-pack

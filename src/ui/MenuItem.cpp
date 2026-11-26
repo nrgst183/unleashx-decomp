@@ -132,6 +132,8 @@ void CMenuItem::LoadIcon()
 {
 	if (m_pTexture != NULL || m_strIcon.size() == 0)
 		return;
+	// (The list loader's thread loads icons too; s_iconCache is shared.)
+	CD3DLock d3dLock;
 
 	// (Fix: an XBE's automatic icon is its title image, copied by the scan
 	// to E:\UDATA\<title id>\TitleImage.xbx and loaded from there. Every XBE

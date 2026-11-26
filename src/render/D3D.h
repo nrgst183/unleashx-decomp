@@ -386,3 +386,21 @@ inline void Get2DSurfaceDesc(D3DResource *resource, DWORD level, D3DSURFACE_DESC
 	D3D::PixelJar::Get2DSurfaceDesc((D3DPixelContainer *)resource, level, desc);
 }
 #endif
+
+// (Not in the original.) Direct3D isn't thread-safe on the Xbox, and threads
+// load textures while the main thread draws (the menu's icons, the skin,
+// the startup resources, the game saves scan, the slideshow). The main
+// thread holds this lock while it draws a frame; the loaders take it around
+// their Direct3D work. It's recursive. (Texture.cpp)
+void LockD3D();
+void UnlockD3D();
+class CD3DLock
+{
+public:
+	CD3DLock() { LockD3D(); }
+	~CD3DLock() { UnlockD3D(); }
+
+private:
+	CD3DLock(const CD3DLock &);
+	CD3DLock &operator=(const CD3DLock &);
+};

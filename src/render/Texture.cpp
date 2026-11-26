@@ -9,6 +9,24 @@
 #include "../settings/AppSettings.h"
 #include "../system/FileIO.h"
 #include "D3D.h"
+#include "../common/XboxKernel.h"
+
+// The Direct3D lock (D3D.h).
+static struct SD3DLock
+{
+	SD3DLock() { RtlInitializeCriticalSection(&section); }
+	RTL_CRITICAL_SECTION section;
+} s_d3dLock;
+
+void LockD3D()
+{
+	RtlEnterCriticalSection(&s_d3dLock.section);
+}
+
+void UnlockD3D()
+{
+	RtlLeaveCriticalSection(&s_d3dLock.section);
+}
 
 // The display mode, cached by GetDisplaySize. 0x00278D9C
 static D3DDISPLAYMODE s_displayMode;
@@ -74,6 +92,7 @@ BOOL LoadTextureFromFile(const char *path, IDirect3DDevice8 *device, IDirect3DTe
 			DWORD read = file->Read(data, size);
 			if (read != 0 && data[0] != 0)
 			{
+				CD3DLock d3dLock;   // (the file is read; Direct3D from here)
 				// (The info is also what each try asks for: D3DX fills
 				// it in, and its format is passed on.)
 				SImageInfo image;
@@ -197,7 +216,10 @@ BOOL LoadTextureFromFileMax(const char *path, IDirect3DDevice8 *device, IDirect3
 	if (!LoadTextureFromFile(path, device, texture, maxWidth, maxHeight, NULL))
 		return FALSE;
 	if (maxWidth > 1 && maxHeight > 1)
+	{
+		CD3DLock d3dLock;
 		ShrinkTexture(device, texture, (UINT)maxWidth, (UINT)maxHeight);
+	}
 	return TRUE;
 }
 
@@ -313,6 +335,7 @@ void DrawSavedScreen(IDirect3DTexture8 *texture, DWORD width, DWORD height, floa
 // 0x0009F909
 bool LoadXprTexture(const char *path, IDirect3DTexture8 **texture)
 {
+	CD3DLock d3dLock;
 	if (texture == NULL)
 		return false;
 	*texture = NULL;
@@ -368,6 +391,7 @@ bool LoadXprTexture(const char *path, IDirect3DTexture8 **texture)
 // 0x000A2371 (path in eax)
 BOOL LoadXprFileTexture(const char *path, IDirect3DTexture8 **texture)
 {
+	CD3DLock d3dLock;
 	if (texture == NULL)
 		return FALSE;
 	*texture = NULL;

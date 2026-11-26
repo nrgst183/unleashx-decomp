@@ -21,6 +21,7 @@ CImageManager::~CImageManager()
 // 0x0013A38E
 IDirect3DTexture8 *CImageManager::Load(const char *path, UINT width, UINT height)
 {
+	CD3DLock d3dLock;   // (the game saves scan loads on its thread; the map too)
 	std::map<std::string, IDirect3DTexture8 *>::iterator it = m_textures.find(path);
 	if (it != m_textures.end())
 	{

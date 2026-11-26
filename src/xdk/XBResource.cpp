@@ -83,6 +83,7 @@ static BOOL XprSizesValid(const XPR_HEADER &header)
 // 0x0009714B
 HRESULT CXBPackedResource::Create(const char *fileName, DWORD numResourceTags, void *resourceTags)
 {
+	CD3DLock d3dLock;   // (fonts and resource.xpr load on the startup threads)
 	char path[512];
 	if (FAILED(XBUtil_FindMediaFile(path, fileName)))
 		return E_FAIL;
@@ -138,6 +139,7 @@ HRESULT CXBPackedResource::Create(const char *fileName, DWORD numResourceTags, v
 // 0x00096F48: the same from an .xpr image in memory.
 HRESULT CXBPackedResource::CreateFromMemory(const void *xpr, DWORD numResourceTags, void *resourceTags)
 {
+	CD3DLock d3dLock;
 	if (xpr == NULL)
 		return E_FAIL;
 	const XPR_HEADER *header = (const XPR_HEADER *)xpr;

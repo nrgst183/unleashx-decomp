@@ -192,6 +192,7 @@ HRESULT CUnleashX::Initialize()
 	{
 		try
 		{
+			CD3DLock d3dLock;   // (the resources load on threads meanwhile)
 			g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0xFF000000, 1.0f, 0);
 			if (m_pSplash == NULL)
 			{
@@ -636,6 +637,7 @@ HRESULT CUnleashX::Initialize()
 	{
 		if (fade != 0 && m_pSplash != NULL)
 		{
+			CD3DLock d3dLock;   // (the skin loads on its thread meanwhile)
 			g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0xFF000000, 1.0f, 0);
 			m_fSplashAlpha = (float)fade * 0.0125f;
 			DrawSplash(m_fSplashAlpha, mode);
@@ -724,6 +726,7 @@ HRESULT CUnleashX::Initialize()
 	{
 		while (fade != 0)
 		{
+			CD3DLock d3dLock;
 			g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0xFF000000, 1.0f, 0);
 			m_fSplashAlpha = (float)fade * 0.0125f;
 			DrawSplash(m_fSplashAlpha, mode);

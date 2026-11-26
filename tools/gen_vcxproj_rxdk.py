@@ -161,6 +161,13 @@ def sources():
     for f in makefile_var('RAR_SRCS'):
         out.append(Source('thirdparty/unrar/%s.cpp' % f, 'thirdparty\\unrar',
                           tp_meta(['_LIB'], ['thirdparty/unrar/shim'], ['thirdparty/unrar/shim/unrar_xbox.h'])))
+    # C files: no unwind tables (Makefile.rxdk's C_FLAGS).
+    c_flags = [f for f in makefile_var('C_FLAGS') if f.startswith('-fno-')]
+    for source in out:
+        if source.path.endswith('.c'):
+            source.meta = dict(source.meta)
+            source.meta['AdditionalOptions'] = (source.meta.get('AdditionalOptions', '') + ' ' +
+                                                ' '.join(c_flags)).strip()
     return out, ux_defines, ux_options
 
 
@@ -258,6 +265,13 @@ def vcxproj(srcs, ux_defines, ux_options):
     w('      <DefaultSaveImage>$(ProjectDir)..\\assets\\save_image.xpr</DefaultSaveImage>')
     w('      <NoPreload>MEDIA_FILE;DEF_FONT;INT_SKINS</NoPreload>')
     w('    </ImageBld>')
+    w('  </ItemDefinitionGroup>')
+    # Release: the dashboard's own code for size, as Makefile.rxdk's UX_OPT
+    # (the third-party files set their own options and keep full speed).
+    w('  <ItemDefinitionGroup Condition="\'$(Configuration)\'==\'Release\'">')
+    w('    <ClCompile>')
+    w('      <AdditionalOptions>-Os %(AdditionalOptions)</AdditionalOptions>')
+    w('    </ClCompile>')
     w('  </ItemDefinitionGroup>')
     w('  <ItemGroup>')
     for name, path in (('MEDIA_FILE', 'assets/media.zip'), ('DEF_FONT', 'assets/default_font.xpr'),
