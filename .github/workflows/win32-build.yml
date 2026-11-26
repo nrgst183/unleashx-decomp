@@ -1,0 +1,18 @@
+# The Windows build (win32/UnleashX.sln, Visual Studio 2022): UnleashX.exe
+# with its disc\ folder next to it, as BUILDING.md's "For Windows" describes.
+name: windows build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Build
+        run: msbuild win32/UnleashX.sln -p:Configuration=Release -p:Platform=x86 -m -nologo -v:minimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unleashx-windows
+          path: |
+            build/vs-win32/Release/UnleashX.exe
+            build/vs-win32/Release/disc/

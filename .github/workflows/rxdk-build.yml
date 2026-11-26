@@ -1,7 +1,7 @@
-# The RXDK build (Makefile.rxdk) up to the linked default.exe, with its checks
-# (.eh_frame bracket, no SSE2). imagebld isn't run here: making the XBE needs
-# RXDK's .NET host tools (see BUILDING.md).
-name: rxdk build
+# The Xbox build with RXDK (Makefile.rxdk): default.exe with its checks
+# (.eh_frame bracket, no SSE2), then imagebld (built here from RXDK-Tools)
+# makes the XBE, and the disc image is packed with extract-xiso.
+name: xbox build
 on: [push, pull_request]
 jobs:
   build:
@@ -10,6 +10,8 @@ jobs:
       RXDK: ${{ github.workspace }}/rxdk-install
       # RXDK-SDK v1.3.12 (the repository has no tags)
       RXDK_SDK_COMMIT: 2c2c301be6767985da89f91519b856c0f5005a56
+      # RXDK-Tools, for imagebld (no tags either)
+      RXDK_TOOLS_COMMIT: 4c46ae73252ed780f0c941c777859e34d185c003
     steps:
       - uses: actions/checkout@v4
       - name: RXDK SDK
@@ -23,11 +25,22 @@ jobs:
           curl -sSfL -o llvm.zip https://github.com/Team-Resurgent/llvm-project/releases/download/latest/xbox-linux-x64.zip
           unzip -q llvm.zip -d "$RXDK/llvm"
           chmod -R +x "$RXDK/llvm/xbox-linux-x64/bin"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: imagebld (RXDK-Tools)
+        run: |
+          git init -q rxdk-tools
+          git -C rxdk-tools fetch -q --depth 1 https://github.com/Team-Resurgent/RXDK-Tools.git "$RXDK_TOOLS_COMMIT"
+          git -C rxdk-tools checkout -q FETCH_HEAD
+          dotnet publish rxdk-tools/src/Rxdk.ImageBld/Rxdk.ImageBld.csproj -c Release -r linux-x64 -o "$RXDK/tools"
+          test -x "$RXDK/tools/imagebld"
       - run: make -f Makefile.rxdk info
-      - run: make -f Makefile.rxdk -j"$(nproc)" exe
+      - run: make -f Makefile.rxdk -j"$(nproc)" xiso
       - uses: actions/upload-artifact@v4
         with:
-          name: unleashx-rxdk-exe
+          name: unleashx-xbox
           path: |
-            build/rxdk/default.exe
+            build/rxdk/default.xbe
+            build/rxdk/UnleashX.iso
             build/rxdk/default.map
