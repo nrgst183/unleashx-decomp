@@ -35,7 +35,7 @@ SFileItem::SFileItem(const char *itemName, BOOL parent, BOOL folder, int unknown
 		memset(name, 0, sizeof(name));
 		strcpy(name, itemName);
 		wchar_t wide[0x104];
-		StrUtf8ToWide(itemName, wide, 0x104);
+		StrUtf8ToWide(itemName, wide, 0x104 - 1);   // (fix: the size excludes the terminator)
 		if (!folder || parent)
 		{
 			label = wide;
@@ -181,7 +181,7 @@ void CFileBrowser::AddFilter(const char *extension)
 		return;
 	}
 	// (The _strdup copy is never freed.)
-	m_filters.push_back(std::string(_strdup(extension)));
+	m_filters.push_back(std::string(extension));
 }
 
 // 0x0001142F (this in ebx, path in esi)

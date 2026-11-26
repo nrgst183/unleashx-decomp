@@ -173,9 +173,9 @@ BOOL CInternetSession::Start(const char *url, const char *postData, BOOL useCach
 	Cancel();
 	if (ParseUrl(url, &m_url) == 0)
 		return FALSE;
-	m_strUrl = _strdup(url);   // (the copies are never freed)
+	m_strUrl = url;   // (fix: the original went through _strdup copies it never freed)
 	if (postData != NULL && strlen(postData) != 0)
-		m_strPostData = _strdup(postData);
+		m_strPostData = postData;
 	else
 		m_strPostData.erase();
 	m_bCancel = FALSE;
@@ -305,7 +305,10 @@ int ParseUrl(const char *url, SUrl *out)
 			rest.append("?");
 			rest.append(args);
 		}
-		strncpy(out->path, rest.c_str(), rest.size() > 0x208 ? 0x208 : rest.size());
+		// (Fix: a full-length path was left without its terminator.)
+		size_t n = rest.size() < sizeof(out->path) - 1 ? rest.size() : sizeof(out->path) - 1;
+		memcpy(out->path, rest.c_str(), n);
+		out->path[n] = '\0';
 	}
 	return (int)strlen(out->host);
 }
@@ -383,7 +386,10 @@ DWORD CInternetSession::Download()
 		int slash = StrReverseFind(name, "/", -1);
 		if (slash != -1)
 			name = StrMid(name, slash + 1, (int)name.size() - (slash + 1));
-		strncpy(m_szFileName, name.c_str(), name.size() < 0x104 ? name.size() : 0x104);
+		// (Fix: a full-length name was left without its terminator.)
+		size_t n = name.size() < sizeof(m_szFileName) - 1 ? name.size() : sizeof(m_szFileName) - 1;
+		memcpy(m_szFileName, name.c_str(), n);
+		m_szFileName[n] = '\0';
 		if (name.size() != 0)
 		{
 			std::string withHost;
@@ -582,6 +588,8 @@ DWORD CInternetSession::Download()
 		else
 		{
 			line.append(buffer);
+			// Where this packet's text starts in line (the headers can span packets).
+			int packetStart = (int)line.size() - (int)strlen(buffer);
 			int end = StrFind(line, "\r\n\r\n", 0);
 			headersDone = end != -1;
 			if (headersDone)
@@ -661,7 +669,10 @@ DWORD CInternetSession::Download()
 										location = folder;
 									}
 								}
-								strcpy(m_url.path, location.c_str());
+								// (Fix: the original strcpy'd the server's Location
+								// into the 0x208-byte path with no bound.)
+								strncpy(m_url.path, location.c_str(), sizeof(m_url.path) - 1);
+								m_url.path[sizeof(m_url.path) - 1] = '\0';
 							}
 						}
 						redirected = TRUE;
@@ -712,13 +723,22 @@ DWORD CInternetSession::Download()
 					}
 					if (toFile)
 					{
-						// Quirk: assumes the headers came in this packet.
-						m_dwReceived = received - bodyStart;
+						// The body so far: what of it came in earlier packets (in
+						// rest), then this packet from where the body starts. (Fix:
+						// the original took bodyStart as an offset into this
+						// packet, so headers that spanned packets made it write
+						// from far past the receive buffer.)
+						int early = packetStart - bodyStart;
+						DWORD offset = early > 0 ? 0 : (DWORD)(bodyStart - packetStart);
+						if (early > (int)rest.size())
+							early = (int)rest.size();
+						m_dwReceived = (early > 0 ? (DWORD)early : 0) + ((DWORD)received - offset);
 						CreateDirectoryTree(WEB_CACHE_DIR);
 						file = CreateFileA(m_szFile, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL,
 						                   CREATE_ALWAYS, 0, NULL);
 						if (file == INVALID_HANDLE_VALUE ||
-						    WriteFile(file, buffer + bodyStart, m_dwReceived, &written, NULL) != TRUE)
+						    (early > 0 && WriteFile(file, rest.c_str(), (DWORD)early, &written, NULL) != TRUE) ||
+						    WriteFile(file, buffer + offset, (DWORD)received - offset, &written, NULL) != TRUE)
 							break;
 					}
 					else
@@ -819,7 +839,7 @@ std::string HttpGetText(const char *host, const char *path, int port)
 			int received;
 			while ((received = socket.Receive(buffer, 0x400)) != SOCKET_ERROR && received > 0)
 			{
-				buffer[0x400] = 0;   // (sic: not at received)
+				buffer[received] = 0;   // (fix: the original ended it at 0x400, so stale stack bytes followed short replies)
 				text.append(buffer);
 				Sleep(1000);
 			}

@@ -30,9 +30,10 @@ public:
 	// A save found under a game's folder (gamePath, else the save's own
 	// directory). (data in eax, this on the stack)
 	CGameSaveItem(const XGAME_FIND_DATA &data, const char *gamePath);   // 0x0011D4B0
-	// Downloaded content. Quirk: this builds a second, temporary item from
-	// the content's data and throws it away, so the item itself stays
-	// empty (no path, title or size). (data in eax, this in ebx)
+	// Downloaded content, under its TDATA folder. (Fix: the original built
+	// a second, temporary item from the content's data and threw it away,
+	// so the item itself stayed empty (no path, title or size) and moving
+	// onto it crashed the screen.) (data in eax, this in ebx)
 	CGameSaveItem(const XCONTENT_FIND_DATA &data, const char *gamePath);   // 0x0011D5DF
 	virtual ~CGameSaveItem();                             // 0x0011BF60 (deleting 0x00020C11)
 
@@ -41,6 +42,8 @@ public:
 	// Its saveimage.xbx (or the one in its parent folder), 48x48, once.
 	// (this on the stack)
 	BOOL LoadImage();                                     // 0x0011C3B0
+	// The save constructor's body.
+	void Init(const XGAME_FIND_DATA &data, const char *gamePath);
 
 	char *m_pszPath;                       // +0x04 the save's folder (0x104 bytes, owned)
 	wchar_t *m_pszTitle;                   // +0x08 the save's name, in quotes (0x80 wchars, owned)
@@ -103,6 +106,8 @@ public:
 	// Opens the screen: lays it out for the screen and sets the sounds'
 	// volume. (this in ebx)
 	void Show();                                          // 0x0011BAFA
+	// Show's layout alone, for a new screen size.
+	void Layout();
 	HRESULT ProcessInput(int *action, SGamepadState **pad);   // 0x0011E249 (this on the stack)
 	HRESULT Render();                                     // 0x0011C8F4 (this in eax)
 

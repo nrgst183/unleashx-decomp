@@ -17,9 +17,11 @@ SFontEntry::SFontEntry(const char *name, CXBFont *font, BOOL owned)
 	this->owned = owned;
 	this->font = font;
 	this->name[0] = '\0';
-	// (Not terminated when the name is 255 characters or more.)
+	// (Fix: terminated when the name is 255 characters or more; skins name
+	// fonts and textures.)
 	if (name != NULL && strlen(name) != 0)
 		strncpy(this->name, name, 0xFF);
+	this->name[0xFF] = '\0';
 	if (this->font == NULL && strlen(this->name) != 0)
 	{
 		this->font = new CXBFont;

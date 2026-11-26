@@ -91,7 +91,11 @@ HRESULT CWMAPlayer::Init(const char *path)
 	params.dwMaxConcurrentStreams = 0x10;
 	params.dwMaxNotifications = 0;
 	m_fileIo.ReadFileCallback = XDK_CAST(XACT_READFILE_CALLBACK, XactReadFile);
+#ifndef UX_RXDK
+	// (RXDK's XACT has no file I/O hook; it only matters for streamed wave
+	// banks, which UnleashX has none of.)
 	XACTEngineSetFileIOCallbacks(&m_fileIo);
+#endif
 	if (FAILED(XACTEngineCreate(&params, &m_pEngine)))
 		return E_FAIL;
 	DWORD size;

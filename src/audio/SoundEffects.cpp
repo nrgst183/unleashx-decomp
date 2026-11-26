@@ -39,7 +39,10 @@ void SSoundEffect::Load(const char *path)
 		sound = NULL;
 		return;
 	}
-	file = strdup(path);
+	// (Fix: a copy of the name; the original kept a strdup() it never freed.
+	// path can be file's own text, from Init.)
+	if (path != file.c_str())
+		file = path;
 }
 
 // 0x0002E11F

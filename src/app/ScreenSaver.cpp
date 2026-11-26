@@ -6,6 +6,7 @@
 #include <cwchar>
 
 #include "../audio/MusicManager.h"
+#include "../common/FrameTime.h"
 #include "../audio/Sound.h"
 #include "../audio/SoundEffects.h"
 #include "../common/FileUtil.h"
@@ -270,7 +271,9 @@ HRESULT CScreenSaver::Render()
 	else
 	{
 		DimScreen(0.9f);
-		if (m_timer.GetElapsedSeconds() > 60.0f && ++s_nTextFade >= 230)
+		// (Fix: a step a 60 Hz frame, not a frame.)
+		static float s_fTextFadeCarry;
+		if (m_timer.GetElapsedSeconds() > 60.0f && (s_nTextFade += FrameTicks(&s_fTextFadeCarry)) >= 230)
 			s_nTextFade = 230;
 	}
 
@@ -286,13 +289,13 @@ HRESULT CScreenSaver::Render()
 		float height = 0.0f;
 		m_pFont->GetTextExtentN(m_strText.c_str(), (int)m_strText.size(), FALSE, &width, &height);
 
-		// A step every 10 ms, bouncing off the screen edges (the text is
-		// centered on its position).
-		if (m_fNextMove - m_timer.GetElapsedMilliseconds() < 0.0f)
+		// A step a 60 Hz frame, bouncing off the screen edges (the text is
+		// centered on its position). (Fix: by time; the original stepped
+		// each frame more than 10 ms apart.)
 		{
 			m_fNextMove = m_timer.GetElapsedMilliseconds() + 10.0f;
-			s_fTextX += s_fStepX;
-			s_fTextY += s_fStepY;
+			s_fTextX += FrameStep(s_fStepX);
+			s_fTextY += FrameStep(s_fStepY);
 			float left = (float)screen.X + width * 0.5f;
 			float right = (float)screen.Width + (float)screen.X - width * 0.5f;
 			if (left >= s_fTextX || right < s_fTextX)

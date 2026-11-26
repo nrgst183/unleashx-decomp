@@ -168,7 +168,7 @@ BOOL CFTPConnection::OpenPassiveConnection()
 			std::string text;
 			StrFormat(text, "Entering Passive Mode (%s,%d,%d)", s_pasvAddress.c_str(), m_wPasvPort >> 8,
 			          m_wPasvPort % 256);
-			Reply(227, text.c_str());
+			ReplyText(227, text.c_str());
 			int bufferSize = 0x10000;
 			setsockopt(listener, SOL_SOCKET, SO_SNDBUF, (char *)&bufferSize, 4);
 			bufferSize = 0x20000;
@@ -659,7 +659,7 @@ HRESULT CFTPConnection::ReceiveFile(std::string path, BOOL resume)
 		{
 			std::string text;
 			StrFormat(text, "Transfer Complete. File renamed to '%s'", path.c_str());
-			Reply(226, text.c_str());
+			ReplyText(226, text.c_str());
 		}
 		else
 		{
@@ -825,7 +825,7 @@ HRESULT CFTPConnection::ReceiveFileBuffered(std::string path, BOOL resume)
 	{
 		std::string text;
 		StrFormat(text, "Transfer Complete. File renamed to '%s'", path.c_str());
-		Reply(226, text.c_str());
+		ReplyText(226, text.c_str());
 	}
 	else
 	{
@@ -1067,12 +1067,17 @@ HRESULT CFTPConnection::BoostReceive()
 		return E_FAIL;
 	}
 
-	// Quirk: the pointers aren't cleared, so a failed second allocation
-	// leaves a stale one for the destructor.
-	if (m_pBoostBuffer[0] != NULL)
-		operator delete(m_pBoostBuffer[0]);
-	if (m_pBoostBuffer[1] != NULL)
-		operator delete(m_pBoostBuffer[1]);
+	// (Fix: the original freed leftovers with operator delete, though they
+	// come from XPhysicalAlloc, and didn't clear the pointer it freed when
+	// the second allocation failed, so the destructor freed it again.)
+	for (int i = 0; i < 2; i++)
+	{
+		if (m_pBoostBuffer[i] != NULL)
+		{
+			XPhysicalFree(m_pBoostBuffer[i]);
+			m_pBoostBuffer[i] = NULL;
+		}
+	}
 	m_pBoostBuffer[0] = (BYTE *)XPhysicalAlloc(kBoostBufferSize, MAXULONG_PTR, 0, PAGE_READWRITE);
 	if (m_pBoostBuffer[0] == NULL)
 		return BoostReceiveUnbuffered();
@@ -1080,6 +1085,7 @@ HRESULT CFTPConnection::BoostReceive()
 	if (m_pBoostBuffer[1] == NULL)
 	{
 		XPhysicalFree(m_pBoostBuffer[0]);
+		m_pBoostBuffer[0] = NULL;
 		return BoostReceiveUnbuffered();
 	}
 	memset(m_pBoostBuffer[0], 0, kBoostBufferSize);
@@ -1103,7 +1109,7 @@ HRESULT CFTPConnection::BoostReceive()
 	if (listen(listener, 0x7FFFFFFF) == 0)
 	{
 		StrFormat(text, "- %u %d", m_files.size(), (WORD)port);
-		Reply(226, text.c_str());
+		ReplyText(226, text.c_str());
 		int bufferSize = 0x10000;
 		setsockopt(listener, SOL_SOCKET, SO_SNDBUF, (char *)&bufferSize, 4);
 		bufferSize = 0x20000;
@@ -1454,7 +1460,7 @@ HRESULT CFTPConnection::BoostReceiveUnbuffered()
 		DWORD deadline = GetTickCount() + 15000;
 		m_dataSocket = INVALID_SOCKET;
 		StrFormat(text, "- %u %d", m_files.size(), (WORD)port);
-		Reply(226, text.c_str());
+		ReplyText(226, text.c_str());
 		Sleep(5);
 		int addrLen = sizeof(sockaddr_in);
 		while (m_dataSocket == INVALID_SOCKET)
@@ -1462,6 +1468,11 @@ HRESULT CFTPConnection::BoostReceiveUnbuffered()
 			m_dataSocket = accept(listener, NULL, (socklen_t *)&addrLen);
 			if (GetTickCount() > deadline)
 				break;
+			// (Fix: a pause between tries, as the buffered boost receive
+			// has. The original spun the CPU for up to 15 s, starving the
+			// dashboard while the client connected.)
+			if (m_dataSocket == INVALID_SOCKET)
+				Sleep(10);
 		}
 		accepted = m_dataSocket != INVALID_SOCKET;
 		if (accepted)

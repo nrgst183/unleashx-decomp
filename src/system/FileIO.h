@@ -95,14 +95,14 @@ public:
 	BYTE *m_pBuffers[2];               // +0x48 NtAllocateVirtualMemory'd
 	BYTE *m_pData;                     // +0x50 the block last read
 	int m_nBuffer;                     // +0x54 the buffer the next read goes into
-	DWORD m_dwBufferSize;              // +0x58
+	UX_SIZE_T m_dwBufferSize;          // +0x58 (in/out size for NtAllocateVirtualMemory)
 	BOOL m_bTruncate;                  // +0x5C cut the file at the position on close (never set)
 	void *m_unknown60;                 // +0x60 freed by the destructor (never set)
 	HANDLE m_hMutex;                   // +0x64 hands blocks to the writer
 	HANDLE m_hWrite;                   // +0x68
 	HANDLE m_hWriter;                  // +0x6C the writer thread
 	const BYTE *m_pWriteData;          // +0x70 the block for the writer
-	DWORD m_dwWriteSize;               // +0x74 its size (also the buffer size while opening)
+	UX_SIZE_T m_dwWriteSize;           // +0x74 its size (also the buffer size while opening)
 	int m_nWritten;                    // +0x78 blocks the writer finished
 	int m_nWrittenSeen;                // +0x7C ... and that Write() saw
 	BOOL m_bStopWriter;                // +0x80

@@ -466,6 +466,8 @@ public:
 	// font NULL = SmallFont. Does nothing once initialized.
 	HRESULT Init(CXBFont *font);                              // 0x000D2D87
 	void Show();                                              // 0x000BEC78 (this in ebx)
+	// Show's layout alone, for a new screen size.
+	void Layout();
 	// B/BACK/BLACK closes. (pad in edx)
 	HRESULT ProcessInput(SGamepadState **pad, int *action);   // 0x000D2200
 	HRESULT Render();                                         // 0x000BF326 (this in edi)

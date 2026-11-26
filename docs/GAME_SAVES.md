@@ -19,7 +19,9 @@ for game saves" (`MSG_GAMESAVES_SEARCH`) shows while it runs.
      `XFindFirstSaveGame`. Each save's image is its `saveimage.xbx`, at
      48x48, or the one in its parent folder.
    - Downloaded content: the same folder under `E:\TDATA`, mapped as `T:`
-     and listed with `XFindFirstContent`.
+     and listed with `XFindFirstContent`. Each item is its
+     `$c\<offering id>` folder there, named by its display name; its image
+     is the game's.
    - The total size comes from `XGetDisplayBlocks` (16 KB blocks).
    - The hard disk games are sorted by name, case-insensitively.
 2. **Memory units.** `H:` to `O:` are checked the same way for
@@ -34,9 +36,14 @@ keyed by path.
 
 - Games on memory units never get save items. The scan reads each save's
   `SaveMeta.xbx` name and then drops it, so these games show "0 Saves".
-- Content items are always empty: no title, path or size. Their constructor
-  builds a temporary item and throws it away.
-- A reload clears the list without freeing the old games.
+- (Fixed) The original's content items were empty (no title, path or
+  size): their constructor built a temporary item and threw it away, so
+  moving onto one crashed the screen.
+- (Fixed) A reload, or deleting a game, leaked the old games.
+- (Fixed) The image cache gave the first caller the cache's own reference, so a
+  freed save or game left a dead texture in the cache. Its memory went to
+  the next texture made, usually the menu's XBE preview, and the screen then
+  showed that XBE's picture for the game or save.
 
 ## Screen
 
@@ -60,8 +67,10 @@ keyed by path.
   Wait..." and a progress bar (by bytes, or by files when sizes are
   unknown).
 
-Some panel sizes use the wrong axis' scale factor (x for y and the other
-way round). The code keeps them, so they only show at non-4:3 resolutions.
+The original used the wrong axis' scale factor for some panel sizes (x for
+y and the other way round) and left a few offsets unscaled, which showed at
+16:9 resolutions (the info panel came out narrow and too tall). Each size
+now uses its own axis' scale.
 
 ## Controls
 
@@ -109,7 +118,7 @@ in, so they show 0. "No" is selected by default.
 With the folder mapped as `M:`, each save is first removed with
 `XDeleteSaveGame` and then its folder is deleted. Quirk: `XDeleteSaveGame`
 is given the save's name in quotes, so that call fails and the folder
-delete does the work.
+delete does the work. (Content isn't passed to it; its folder is deleted.)
 
 The result is `MSG_GAMESAVES_DELETE_SUCCESS` or `MSG_GAMESAVES_DELETE_ERROR`.
 On success, the save or game is removed from the list. A deleted game is

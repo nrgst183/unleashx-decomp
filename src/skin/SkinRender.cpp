@@ -3,8 +3,10 @@
 #include <cmath>
 #include <cstring>
 #include <cwchar>
+#include <string>
 
 #include "../media/WMVideoPlayer.h"
+#include "../common/FrameTime.h"
 #include "../render/D3D.h"
 #include "../render/Draw.h"
 #include "../render/Fonts.h"
@@ -75,6 +77,37 @@ void GetSkinTextString(const SSkinText &text, wchar_t *buffer)
 	}
 }
 
+// (Not in the original.) A text's width, remembered for the last few texts:
+// the scrolling ones (the news ticker, up to 1024 characters) were measured
+// glyph by glyph every frame, though they change rarely.
+static float CachedTextWidth(CXBFont *font, const wchar_t *text)
+{
+	struct SEntry
+	{
+		CXBFont *font;
+		float scaleX;
+		std::wstring text;
+		float width;
+	};
+	static SEntry s_entries[4];
+	static int s_nNext;
+	if (text == NULL)
+		return 0.0f;
+	for (int i = 0; i < 4; i++)
+	{
+		SEntry &entry = s_entries[i];
+		if (entry.font == font && entry.scaleX == font->m_fScaleFactorX && entry.text == text)
+			return entry.width;
+	}
+	SEntry &entry = s_entries[s_nNext];
+	s_nNext = (s_nNext + 1) % 4;
+	entry.font = font;
+	entry.scaleX = font->m_fScaleFactorX;
+	entry.text = text;
+	entry.width = font->GetTextWidth(text);
+	return entry.width;
+}
+
 // (inlined)
 void DrawScrollingSkinText(SSkinText &text, CXBFont *font, const wchar_t *shown, float x, float y, float width,
                            float height, BOOL step, BOOL offsetApplied)
@@ -88,7 +121,7 @@ void DrawScrollingSkinText(SSkinText &text, CXBFont *font, const wchar_t *shown,
 	clip.x2 = (long)(x + width > displayWidth ? displayWidth : x + width);
 	clip.y2 = (long)(y + height > displayHeight ? displayHeight : y + height);
 	g_pd3dDevice->SetScissors(1, FALSE, &clip);
-	float textWidth = font->GetTextWidth(shown);
+	float textWidth = CachedTextWidth(font, shown);
 	DWORD align = text.align;
 	BOOL moves = width < textWidth || text.scroll == 2;
 	if (!step)
@@ -155,11 +188,9 @@ static void DrawSkinShape(const SSkinShape &shape)
 HRESULT CSkin::RenderUnsorted()
 {
 	// Texts scroll a step every <ScrollSpeed> ms (first after 2 s).
-	static DWORD s_dwScrollTick = GetTickCount() + 2000;   // 0x0027A44C
-	DWORD now = GetTickCount();
-	BOOL step = s_dwScrollTick < now;
-	if (step)
-		s_dwScrollTick = (DWORD)m_pSettings->m_nScrollSpeed + now;
+	static unsigned long s_dwScrollTick = GetTickCount() + 2000;   // 0x0027A44C
+	// (Fix: at its 60 fps pace whatever the frame rate.)
+	BOOL step = FrameDue(&s_dwScrollTick, GetTickCount(), (DWORD)m_pSettings->m_nScrollSpeed);
 
 	for (std::vector<SSkinImage>::iterator it = m_mainImages.begin(); it != m_mainImages.end(); ++it)
 	{
@@ -213,11 +244,8 @@ HRESULT CSkin::RenderUnsorted()
 // 0x00100948
 HRESULT CSkin::RenderSorted()
 {
-	static DWORD s_dwScrollTick = GetTickCount() + 2000;   // 0x0027A444
-	DWORD now = GetTickCount();
-	BOOL step = s_dwScrollTick < now;
-	if (step)
-		s_dwScrollTick = (DWORD)m_pSettings->m_nScrollSpeed + now;
+	static unsigned long s_dwScrollTick = GetTickCount() + 2000;   // 0x0027A444
+	BOOL step = FrameDue(&s_dwScrollTick, GetTickCount(), (DWORD)m_pSettings->m_nScrollSpeed);   // (fix: as at 60 fps)
 	float scale = GetSkinTextScale();
 
 	for (std::vector<SSkinDrawItem>::iterator it = m_mainOrder.begin(); it != m_mainOrder.end(); ++it)

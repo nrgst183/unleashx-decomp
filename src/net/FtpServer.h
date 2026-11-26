@@ -86,6 +86,7 @@ public:
 	// Sends "<code> <text>\r\n" (code < 11: just the text). text is a
 	// printf format for the remaining arguments.
 	void Reply(int code, const char *fmt, ...);              // 0x000B45B1
+	void ReplyText(int code, const char *text);              // Reply without formatting
 	// 502, with "Command not implemented." if text is empty.
 	void ReplyNotImplemented(const char *text);              // 0x000B489E
 

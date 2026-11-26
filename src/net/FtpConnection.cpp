@@ -155,17 +155,15 @@ CFTPConnection::~CFTPConnection()
 		CloseHandle(m_hThread);
 		m_hThread = NULL;
 	}
-	// Quirk: boost buffers come from XPhysicalAlloc but would be freed with
-	// operator delete here; BoostReceive() frees and clears them itself.
-	if (m_pBoostBuffer[0] != NULL)
+	// Boost buffers come from XPhysicalAlloc. (Fix: the original freed them
+	// with operator delete; BoostReceive() normally frees them itself.)
+	for (int i = 0; i < 2; i++)
 	{
-		operator delete(m_pBoostBuffer[0]);
-		m_pBoostBuffer[0] = NULL;
-	}
-	if (m_pBoostBuffer[1] != NULL)
-	{
-		operator delete(m_pBoostBuffer[1]);
-		m_pBoostBuffer[1] = NULL;
+		if (m_pBoostBuffer[i] != NULL)
+		{
+			XPhysicalFree(m_pBoostBuffer[i]);
+			m_pBoostBuffer[i] = NULL;
+		}
 	}
 }
 
@@ -290,20 +288,34 @@ static BOOL ReadLine(CFTPConnection *connection, std::string *line)
 // bytes of the first variadic argument slot, which is whatever the caller
 // had on the stack when it passed no arguments. Callers often pass text
 // that was already formatted (and may contain user input) as fmt.
+//
+// (Fix: text that's already formatted now goes through ReplyText, which sends
+// it as it is. The original ran it through vsnprintf too, so a '%' from the
+// client, such as in the USER name before login, read and printed the
+// stack.)
 void CFTPConnection::Reply(int code, const char *fmt, ...)
 {
-	std::string line;
+	std::string text;
 	if (fmt != NULL && fmt[0] != '\0')
 	{
-		std::string text;
 		va_list args;
 		va_start(args, fmt);
 		StrFormatV(text, fmt, args);
 		va_end(args);
+	}
+	ReplyText(code, text.c_str());
+}
+
+// Reply's sending half: text is sent as it is.
+void CFTPConnection::ReplyText(int code, const char *text)
+{
+	std::string line;
+	if (text != NULL && text[0] != '\0')
+	{
 		if (code > 10)
-			StrFormat(line, "%d %s\r\n", code, text.c_str());
+			StrFormat(line, "%d %s\r\n", code, text);
 		else
-			StrFormat(line, "%s\r\n", text.c_str());
+			StrFormat(line, "%s\r\n", text);
 	}
 	else
 	{
@@ -329,14 +341,14 @@ void CFTPConnection::ReplyNotImplemented(const char *text)
 {
 	if (text == NULL || text[0] == '\0')
 		text = "Command not implemented.";
-	Reply(502, text);
+	ReplyText(502, text);
 }
 
 // 0x000B4729
 void CFTPConnection::SendWelcome()
 {
 	std::string welcome = m_pServer->m_strWelcome;
-	Reply(230, welcome.c_str());
+	ReplyText(230, welcome.c_str());
 }
 
 // 0x000B4046
@@ -372,44 +384,30 @@ void CFTPConnection::ResolvePath(std::string *out, const char *cwd, const char *
 
 // 0x000B4419
 // The first path component is the drive. Quirk: it's uppercased only if more
-// path follows ("/c" gives "c:\"), and nothing checks the 260-byte buffer.
+// path follows ("/c" gives "c:\\"). (Fix: the original built this in a
+// 260-byte stack buffer with no bound, and FTP command arguments run to
+// about 5 KB, so any logged-in client, anonymous too, could overrun it.)
 void CFTPConnection::FtpPathToXbox(std::string *out, const char *ftpPath)
 {
-	char buffer[260];
-	memset(buffer, 0, sizeof(buffer));
-	int length = 0;
-
-	int skip = 0;
-	while (ftpPath[skip] == '/')
-		skip++;
-	const char *p = ftpPath + skip;
-	const char *slash = strchr(p, '/');
+	while (*ftpPath == '/')
+		ftpPath++;
+	const char *slash = strchr(ftpPath, '/');
+	std::string path;
 	if (slash == NULL)
 	{
-		for (; *p != '\0'; p++)
-			buffer[length++] = *p;
-		buffer[length] = ':';
-		buffer[length + 1] = '\\';
-		buffer[length + 2] = '\0';
-		length += 2;
+		path = ftpPath;
+		path.append(":\\");
 	}
 	else
 	{
-		for (; p < slash; p++)
-			buffer[length++] = (char)toupper(*p);
-		buffer[length] = ':';
-		buffer[length + 1] = '\\';
-		buffer[length + 2] = '\0';
+		for (const char *p = ftpPath; p < slash; p++)
+			path += (char)toupper((unsigned char)*p);
+		path += ':';
 		// the separator after the drive becomes the '\' after ':'
-		for (p = slash; *p != '\0'; p++)
-		{
-			length++;
-			buffer[length] = *p == '/' ? '\\' : *p;
-		}
-		length++;
+		for (const char *p = slash; *p != '\0'; p++)
+			path += *p == '/' ? '\\' : *p;
 	}
-	buffer[length] = '\0';
-	*out = buffer;
+	*out = path;
 	StrReplaceAll(*out, "::", ":");
 }
 
@@ -538,7 +536,7 @@ HRESULT CFTPConnection::Login()
 		          free.c_str(), total.c_str());
 		banner.append(command);
 	}
-	Reply(0, banner.c_str());
+	ReplyText(0, banner.c_str());
 	Reply(220, "UnleashX FTP Server ready.");
 
 	while (!loggedIn)
@@ -570,7 +568,7 @@ HRESULT CFTPConnection::Login()
 					{
 						std::string text;
 						StrFormat(text, "Password required for %s", arg.c_str());
-						Reply(331, text.c_str());
+						ReplyText(331, text.c_str());
 					}
 					m_strUser = arg;
 					gotUser = TRUE;
@@ -785,9 +783,9 @@ HRESULT CFTPConnection::Dispatch(std::string command, std::string arg)
 				text.append((i + 1) % 4 == 0 ? "\r\n" : "\t");
 			}
 			text.append("\r\n");
-			Reply(214, text.c_str());
+			ReplyText(214, text.c_str());
 			text = "HELP command successful.";
-			Reply(214, text.c_str());
+			ReplyText(214, text.c_str());
 		}
 		else
 		{
@@ -894,7 +892,7 @@ void CFTPConnection::CmdAbor(std::string)
 void CFTPConnection::CmdQuit(std::string)
 {
 	std::string goodbye = m_pServer->m_strGoodbye;
-	Reply(221, goodbye.c_str());
+	ReplyText(221, goodbye.c_str());
 	m_bConnected = FALSE;
 }
 
@@ -928,7 +926,7 @@ void CFTPConnection::CmdCdup(std::string)
 	std::string text;
 	StrFormat(text, "\"%s\" is current directory.", m_strCwd.c_str());
 	StrReplaceAll(text, "\\", "/");
-	Reply(250, text.c_str());
+	ReplyText(250, text.c_str());
 }
 
 // 0x000B69EE
@@ -1100,7 +1098,7 @@ void CFTPConnection::CmdPwd(std::string)
 	std::string text;
 	StrFormat(text, "\"%s\" is current directory.", m_strCwd.c_str());
 	StrReplaceAll(text, "\\", "/");
-	Reply(257, text.c_str());
+	ReplyText(257, text.c_str());
 }
 
 // 0x000B5720
@@ -1109,7 +1107,7 @@ void CFTPConnection::CmdRest(std::string arg)
 	m_dwRestOffset = atol(arg.c_str());
 	std::string text;
 	StrFormat(text, "Restarting at %d.", m_dwRestOffset);
-	Reply(350, text.c_str());
+	ReplyText(350, text.c_str());
 }
 
 // 0x000B52D5
@@ -1203,7 +1201,7 @@ void CFTPConnection::CmdSize(std::string arg)
 	GetFileAttributesExA(xboxPath.c_str(), GetFileExInfoStandard, &data);
 	std::string text;
 	StrFormat(text, "%u", data.nFileSizeLow);
-	Reply(213, text.c_str());
+	ReplyText(213, text.c_str());
 }
 
 // 0x000B4A14
@@ -1219,7 +1217,7 @@ void CFTPConnection::CmdSyst(std::string)
 		text = "UNIX emulated by UnleashX FTP Server";
 	else
 		text = server->m_strSyst.c_str();
-	Reply(215, text);
+	ReplyText(215, text);
 }
 
 // 0x000B49EE
@@ -1279,11 +1277,11 @@ void CFTPConnection::BuildFileTree(std::string root)
 	if (StrRight(dir, 1) != "\\")
 		dir.append("\\");
 
-	char pattern[0x10C];
-	strcpy(pattern, dir.c_str());
-	strcat(pattern, "*");
+	// (Fix: the original strcpy'd this into a 0x10C-byte stack buffer; the
+	// root comes from the client's command.)
+	std::string pattern = dir + "*";
 	WIN32_FIND_DATAA data;
-	HANDLE find = FindFirstFileA(pattern, &data);
+	HANDLE find = FindFirstFileA(pattern.c_str(), &data);
 	if (find != INVALID_HANDLE_VALUE)
 	{
 		do
@@ -1295,7 +1293,7 @@ void CFTPConnection::BuildFileTree(std::string root)
 		CloseHandle(find);
 	}
 
-	find = FindFirstFileA(pattern, &data);
+	find = FindFirstFileA(pattern.c_str(), &data);
 	if (find != INVALID_HANDLE_VALUE)
 	{
 		do
@@ -1345,7 +1343,7 @@ void CFTPConnection::CmdSite(std::string arg)
 			UpdateDriveSpace(info);
 			StrFormat(text, "%I64u", info->freeBytes);
 		}
-		Reply(220, text.c_str());
+		ReplyText(220, text.c_str());
 		return;
 	}
 
@@ -1419,7 +1417,7 @@ void CFTPConnection::CmdSite(std::string arg)
 		{
 			fclose(file);
 			StrFormat(path, "content made and put to %s.", fileName.c_str());
-			Reply(200, path.c_str());
+			ReplyText(200, path.c_str());
 			return;
 		}
 		ReplyNotImplemented(NULL);
@@ -1453,7 +1451,7 @@ void CFTPConnection::CmdSite(std::string arg)
 	}
 	StrTrimRight(StrTrimLeft(text));
 	if (text.size() != 0)
-		Reply(code, text.c_str());
+		ReplyText(code, text.c_str());   // (fix: the dashboard's text isn't a format)
 	else
 		Reply(200, "\"%s\" OK.", arg.c_str());
 }
@@ -1607,7 +1605,7 @@ void CFTPConnection::SiteTitles(std::string arg)
 			if (m_strTitleImageDir.size() != 0)
 				SaveTitleImage(xbePath.c_str(), xbe.certificate.titleId);
 
-			Reply(150, text.c_str());
+			ReplyText(150, text.c_str());
 			found = TRUE;
 		} while (FindNextFileA(find, &data) == TRUE);
 		CloseHandle(find);

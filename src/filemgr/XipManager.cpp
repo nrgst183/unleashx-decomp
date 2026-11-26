@@ -254,7 +254,7 @@ unsigned __stdcall CXipManager::ExtractThread(void *param)
 				StrReplaceAll(path, "\\\\", "\\");
 				DeleteFileA(path.c_str());
 				memset(xip->m_szCurrentFile, 0, sizeof(xip->m_szCurrentFile));
-				MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, xip->m_szCurrentFile, 0x104);
+				MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, xip->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 				if (xip->m_archive.Extract(it->index, path.c_str()) != S_OK)
 				{
 					xip->m_bFailed = TRUE;
@@ -276,7 +276,7 @@ unsigned __stdcall CXipManager::ExtractThread(void *param)
 					StrReplaceAll(path, "\\\\", "\\");
 					DeleteFileA(path.c_str());
 					memset(xip->m_szCurrentFile, 0, sizeof(xip->m_szCurrentFile));
-					MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, xip->m_szCurrentFile, 0x104);
+					MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, xip->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 					if (xip->m_archive.Extract(current.index, path.c_str()) == S_OK)
 					{
 						SetFileAttributesA(path.c_str(), FILE_ATTRIBUTE_NORMAL);
@@ -501,8 +501,8 @@ BOOL CXipManager::Render()
 	         g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
 	DrawRect(m_fX + 10.0f, s_fXipHeaderHeight + m_fY, m_fWidth - 20.0f, (m_fHeight - s_fXipHeaderHeight) - 10.0f,
 	         g_colorScheme.DIALOG_BORDERCOLOR, g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
-	wchar_t title[0x104];
-	MultiByteToWideChar(CP_ACP, 0, m_strXipFile.c_str(), (int)m_strXipFile.size(), title, 0x104);
+	wchar_t title[0x104] = { 0 };   // (fix: was uninitialized)
+	MultiByteToWideChar(CP_ACP, 0, m_strXipFile.c_str(), (int)m_strXipFile.size(), title, 0x103);   // (fix: room for the terminator)
 	m_pCaptionFont->DrawText(m_fX + 12.0f,
 	                         (m_pCaptionFont->m_fScaleFactorY * m_pCaptionFont->m_fFontHeight + 10.0f) * 0.5f + m_fY,
 	                         g_colorScheme.CAPTION_TEXTCOLOR, title, XBFONT_CENTER_Y | XBFONT_TRUNCATED,

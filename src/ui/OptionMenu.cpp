@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "../audio/Sound.h"
+#include "../common/FrameTime.h"
 #include "../input/Gamepad.h"
 #include "../render/Draw.h"
 #include "../render/Fonts.h"
@@ -29,6 +30,31 @@ COptionMenu::SOption::SOption(const std::wstring &text_, BOOL enabled_, int valu
 	unknown30 = 0;
 }
 
+// Every option menu, for RelayoutAll.
+static std::vector<COptionMenu *> &OptionMenus()
+{
+	static std::vector<COptionMenu *> s_all;
+	return s_all;
+}
+
+void COptionMenu::RelayoutAll()
+{
+	std::vector<COptionMenu *> &all = OptionMenus();
+	for (size_t i = 0; i < all.size(); i++)
+	{
+		COptionMenu *menu = all[i];
+		if (menu->m_dwAutoLayout & 1)
+			menu->m_fX = 0.0f;
+		if (menu->m_dwAutoLayout & 2)
+			menu->m_fY = 0.0f;
+		if (menu->m_dwAutoLayout & 4)
+			menu->m_fWidth = 0.0f;
+		if (menu->m_dwAutoLayout & 8)
+			menu->m_fHeight = 0.0f;
+		menu->m_nPageSize = 0;
+	}
+}
+
 // 0x000AEADE
 COptionMenu::COptionMenu(BOOL wrap)
 {
@@ -50,11 +76,22 @@ COptionMenu::COptionMenu(BOOL wrap)
 	m_pSettings = CAppSettings::GetInstance();
 	// (The position, size, line height and list rectangle are left to
 	// Create.)
+	m_dwAutoLayout = 0;
+	OptionMenus().push_back(this);
 }
 
 // 0x000ADE12
 COptionMenu::~COptionMenu()
 {
+	std::vector<COptionMenu *> &all = OptionMenus();
+	for (size_t i = 0; i < all.size(); i++)
+	{
+		if (all[i] == this)
+		{
+			all.erase(all.begin() + i);
+			break;
+		}
+	}
 	ClearOptions();
 	// (The vector's destructor clears it again.)
 }
@@ -319,6 +356,8 @@ void COptionMenu::Render()
 
 	if (m_fX == 0.0f || m_fY == 0.0f || m_fWidth == 0.0f || m_fHeight == 0.0f)
 	{
+		m_dwAutoLayout = (m_fX == 0.0f ? 1 : 0) | (m_fY == 0.0f ? 2 : 0) | (m_fWidth == 0.0f ? 4 : 0) |
+		                 (m_fHeight == 0.0f ? 8 : 0);
 		// Fit and center the window (on 640x480, then scaled).
 		float height = m_fLineHeight + 10.0f;
 		float width = m_fWidth == 0.0f ? m_pFont->GetTextWidth(m_strTitle.c_str()) + 75.0f : m_fWidth;
@@ -381,17 +420,17 @@ void COptionMenu::Render()
 	}
 	else
 	{
-		// Down by 1/24 of the screen's height every 5ms; this frame is drawn
-		// at the offset before the step.
+		// Down by 1/24 of the screen's height a 60 Hz frame (fix: by time;
+		// the original stepped each frame more than 5 ms apart); this frame
+		// is drawn at the offset before the step.
 		offset = s_fSlideOffset;
 		DrawWindowFrame(m_fX, m_fY - offset, m_fWidth, m_fHeight, m_fBorder, m_fLineHeight, m_fLineHeight,
 		                g_colorScheme.DIALOG_BORDERCOLOR, g_colorScheme.DIALOG_BACKCOLOR,
 		                g_colorScheme.DIALOG_INNER_BORDERCOLOR, g_colorScheme.DIALOG_INNER_BACKCOLOR, 2, 1);
-		if (GetTickCount() - m_dwSlideTime > 5)
 		{
 			float screenHeight = 480.0f;
 			GetDisplaySize(NULL, &screenHeight, FALSE);
-			s_fSlideOffset -= screenHeight * (1.0f / 24.0f);
+			s_fSlideOffset -= FrameStep(screenHeight * (1.0f / 24.0f));
 			m_dwSlideTime = GetTickCount();
 		}
 		if (s_fSlideOffset <= 0.0f)

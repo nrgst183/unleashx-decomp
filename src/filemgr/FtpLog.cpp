@@ -248,7 +248,7 @@ void CFTPLog::ShowSaveKeyboard(const wchar_t *title, const char *path)
 	if (name.size() != 0)
 	{
 		wchar_t text[0x104];
-		StrUtf8ToWide(name.c_str(), text, 0x104);
+		StrUtf8ToWide(name.c_str(), text, 0x104 - 1);   // (fix: the size excludes the terminator)
 		g_virtualKeyboard.SetText(text);
 	}
 }

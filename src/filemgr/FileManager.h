@@ -89,6 +89,8 @@ public:
 	void OpenPath(const char *path);                      // 0x00128C01
 	// Back to browsing; lays out and refreshes. (this in eax)
 	void Reset();                                         // 0x0002B4C9
+	// The layout alone, for a new screen size.
+	void Relayout() { SetDefaultRect(); Layout(); }
 	// (this in esi, texture in edi)
 	void SetBackground(IDirect3DTexture8 *texture);       // 0x0002B4A1
 	HRESULT ProcessInput(int *action, SGamepadState **pad);   // 0x0012C91D (FileManagerInput.cpp)

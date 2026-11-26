@@ -131,8 +131,8 @@ unsigned __stdcall CFileManager::OperationThread(void *param)
 					LogOperation(message.c_str(), FALSE);
 					logged = TRUE;
 				}
-				StrUtf8ToWide(sourcePath.c_str(), g_szOperationFile, 0x12F);
-				StrUtf8ToWide(targetPath.c_str(), g_szOperationTarget, 0x12F);
+				StrUtf8ToWide(sourcePath.c_str(), g_szOperationFile, 0x12F - 1);   // (fix: the size excludes the terminator)
+				StrUtf8ToWide(targetPath.c_str(), g_szOperationTarget, 0x12F - 1);   // (fix: the size excludes the terminator)
 				// Three tries.
 				BOOL copied = FALSE;
 				for (int tries = 3; tries >= 1;)
@@ -198,8 +198,8 @@ unsigned __stdcall CFileManager::OperationThread(void *param)
 			DWORD flags = it->isFolder ? MOVEFILE_COPY_ALLOWED : MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING;
 			sourcePath = it->path;
 			targetPath = MapPath(it->path, sourceDir, destDir);
-			StrUtf8ToWide(sourcePath.c_str(), g_szOperationFile, 0x12F);
-			StrUtf8ToWide(targetPath.c_str(), g_szOperationTarget, 0x12F);
+			StrUtf8ToWide(sourcePath.c_str(), g_szOperationFile, 0x12F - 1);   // (fix: the size excludes the terminator)
+			StrUtf8ToWide(targetPath.c_str(), g_szOperationTarget, 0x12F - 1);   // (fix: the size excludes the terminator)
 			Sleep(1);
 			SetFileAttributesA(sourcePath.c_str(), FILE_ATTRIBUTE_NORMAL);
 			// Folders going elsewhere are created; the rest (and folders
@@ -301,7 +301,7 @@ unsigned __stdcall CFileManager::OperationThread(void *param)
 					if (it->isFolder)
 						continue;
 					Sleep(5);
-					StrUtf8ToWide(it->path.c_str(), g_szOperationFile, 0x12F);
+					StrUtf8ToWide(it->path.c_str(), g_szOperationFile, 0x12F - 1);   // (fix: the size excludes the terminator)
 					Sleep(1);
 					std::string name = it->path;
 					StrReplaceAll(name, sourceDir.c_str(), "");

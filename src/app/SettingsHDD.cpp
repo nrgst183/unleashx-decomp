@@ -135,10 +135,10 @@ HRESULT CHDDSetting::Init(CXBFont *font)
 	AddItem(L"S.M.A.R.T", L"", ITEM_SMART_HEADER, TRUE, TRUE);
 	char info[100];
 	GetHddInfoText(1, info);
-	StrUtf8ToWide(info, text, 100);
+	StrUtf8ToWide(info, text, 100 - 1);   // (fix: the size excludes the terminator)
 	AddItem(L"Info", text, ITEM_INFO, FALSE, FALSE);
 	GetHddInfoText(2, info);
-	StrUtf8ToWide(info, text, 100);
+	StrUtf8ToWide(info, text, 100 - 1);   // (fix: the size excludes the terminator)
 	AddItem(L"Transfer Mode", text, ITEM_TRANSFER_MODE, FALSE, FALSE);
 	AddItem(L"Temp.", GetSkinTextValue(TEXT_HDTEMP), ITEM_TEMPERATURE, FALSE, FALSE);
 	// The SMART lines in the order the disk reports the attributes. Quirk:
@@ -362,7 +362,7 @@ BOOL CHDDSetting::Save()
 	CXmlElement *settings = g_config.FindElement(&g_config.m_root, "Settings");
 	if (settings == NULL)
 	{
-		sprintf(message, GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
+		StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
 		ShowMessage(message, GetString(STR_ERROR), MSGBOX_BUTTONS_OK);
 		return FALSE;
 	}

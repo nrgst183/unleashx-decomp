@@ -53,6 +53,12 @@ static std::string MetaValue(std::string text)
 // 0x0011D4B0
 CGameSaveItem::CGameSaveItem(const XGAME_FIND_DATA &data, const char *gamePath)
 {
+	Init(data, gamePath);
+}
+
+// (The save constructor's body, which the content one now uses too.)
+void CGameSaveItem::Init(const XGAME_FIND_DATA &data, const char *gamePath)
+{
 	m_pszPath = NULL;
 	m_pszTitle = NULL;
 	m_pImage = NULL;
@@ -67,7 +73,7 @@ CGameSaveItem::CGameSaveItem(const XGAME_FIND_DATA &data, const char *gamePath)
 	{
 		strcpy(m_pszPath, data.szSaveGameDirectory);
 	}
-	StrUtf8ToWide(data.wfd.cFileName, m_szFolder, 20);
+	StrUtf8ToWide(data.wfd.cFileName, m_szFolder, 20 - 1);   // (fix: the size excludes the terminator)
 	m_pszTitle = new wchar_t[0x80];
 	memset(m_pszTitle, 0, 0x80 * sizeof(wchar_t));
 	swprintf(m_pszTitle, 0x80, L"\"%s\"", data.szSaveGameName);
@@ -90,29 +96,31 @@ CGameSaveItem::CGameSaveItem(const XGAME_FIND_DATA &data, const char *gamePath)
 // 0x0011D5DF
 CGameSaveItem::CGameSaveItem(const XCONTENT_FIND_DATA &data, const char *gamePath)
 {
-	m_pszPath = NULL;
-	m_pszTitle = NULL;
-	m_pImage = NULL;
-	// The content as a save: its folder data, and (quirk) only the first
-	// character of its directory and of its name.
+	// The content as a save: its folder data, directory and name. (The
+	// original copied only the first character of the directory and the
+	// name.)
 	XGAME_FIND_DATA save;
-	memset(&save, 0, sizeof(save));   // (the original leaves the rest unset)
+	memset(&save, 0, sizeof(save));
 	save.wfd = data.wfd;
-	save.szSaveGameDirectory[0] = data.szContentDirectory[0];
-	save.szSaveGameName[0] = data.szDisplayName[0];
-	// Quirk: this constructs a temporary, not this item.
-	CGameSaveItem temporary(save, gamePath);
-	// (The original leaves the rest of this item unset.)
-	memset(m_szDate, 0, sizeof(m_szDate));
-	memset(m_szFolder, 0, sizeof(m_szFolder));
-	memset(m_szSize, 0, sizeof(m_szSize));
-	memset(m_szBlocks, 0, sizeof(m_szBlocks));
-	m_unknownC0 = 0;
-	m_bImageTried = FALSE;
-	m_fSizeKB = 0.0f;
-	m_dwBlocks = 0;
-	m_bContent = FALSE;
-	m_unknownD8 = 0;
+	// Its folder, from T:\ (the game's TDATA folder, mapped only for the
+	// scan) moved onto gamePath. (Content is in $c\<offering id>\ there.)
+	std::string folder = data.szContentDirectory;
+	if (folder.size() >= 3 && StrCmpNoCase(StrLeft(folder, 3), "T:\\") == 0)
+		folder = std::string(gamePath) + StrMid(folder, 3, (int)folder.size() - 3);
+	else if (folder.size() < 2 || folder[1] != ':')
+		folder = std::string(gamePath) + data.wfd.cFileName;
+	StrReplaceAll(folder, "\\\\", "\\");
+	while (folder.size() > 3 && folder[folder.size() - 1] == '\\')
+		folder.erase(folder.size() - 1);
+	strncpy(save.szSaveGameDirectory, folder.c_str(), sizeof(save.szSaveGameDirectory) - 1);
+	size_t nameLength = sizeof(save.szSaveGameName) < sizeof(data.szDisplayName) ? sizeof(save.szSaveGameName)
+	                                                                              : sizeof(data.szDisplayName);
+	wcsncpy(save.szSaveGameName, data.szDisplayName, nameLength / sizeof(wchar_t) - 1);
+	// (Fix: this item is filled in. The original constructed a temporary and
+	// threw it away, leaving this item without a path or title, so moving
+	// onto downloaded content crashed the screen.)
+	Init(save, NULL);
+	m_bContent = TRUE;
 }
 
 // 0x0011BF60
@@ -201,10 +209,15 @@ BOOL CGameSaveItem::LoadImage()
 SGameEntry::SGameEntry(const char *gamePath, const wchar_t *gameName, BOOL memoryUnit, const char *id)
 {
 	image = NULL;
-	strcpy(titleId, id);
-	strcpy(path, gamePath);
-	wcscpy(name, gameName);
-	StrUtf8ToWide(id, folderName, 20);
+	// (Fix: bounded copies. The folder name comes from the disk and can run
+	// to 42 characters; the original strcpy'd it into 12 bytes.)
+	strncpy(titleId, id, sizeof(titleId) - 1);
+	titleId[sizeof(titleId) - 1] = '\0';
+	strncpy(path, gamePath, sizeof(path) - 1);
+	path[sizeof(path) - 1] = '\0';
+	wcsncpy(name, gameName, sizeof(name) / sizeof(name[0]) - 1);
+	name[sizeof(name) / sizeof(name[0]) - 1] = 0;
+	StrUtf8ToWide(id, folderName, 20 - 1);   // (fix: the size excludes the terminator)
 	titleNumber = 0;
 	saveCount = 0;
 	contentCount = 0;
@@ -291,7 +304,9 @@ void SGameEntry::LoadSaves()
 				{
 					do
 					{
-						CGameSaveItem *item = new CGameSaveItem(data, path);
+						// (Fix: under the TDATA folder, where the content
+						// is; the original passed the UDATA one.)
+						CGameSaveItem *item = new CGameSaveItem(data, content.c_str());
 						if (item != NULL)
 						{
 							item->m_bContent = TRUE;
@@ -340,7 +355,7 @@ void SGameEntry::LoadSaves()
 						{
 							saveName = MetaValue(saveName);
 							wchar_t title[0x80];
-							StrUtf8ToWide(saveName.c_str(), title, 0x80);
+							StrUtf8ToWide(saveName.c_str(), title, 0x80 - 1);   // (fix: the size excludes the terminator)
 							(void)title;
 						}
 					}
@@ -553,6 +568,17 @@ void CGameManager::Show()
 		m_pDownloadMenu->Show(0);
 	if (m_pSession != NULL)
 		m_pSession->Cancel();
+	Layout();
+	CSound *sounds[4] = {m_pSoundSelect, m_pSoundBack, m_pSoundGame, m_pSoundSlot};
+	for (int i = 0; i < 4; i++)
+	{
+		if (sounds[i] != NULL && sounds[i]->m_pBuffer != NULL)
+			sounds[i]->m_pBuffer->SetVolume(m_pSettings->GetSoundVolume());
+	}
+}
+
+void CGameManager::Layout()
+{
 	// 480x440 at (80, 20) on 640x480. Quirk: the height scales by the
 	// raw factor, the width by the factor clamped to at least 1.
 	m_fX = 80.0f;
@@ -568,12 +594,6 @@ void CGameManager::Show()
 	if (m_fScaleY < 1.0f)
 		m_fScaleY = 1.0f;
 	m_fWidth = m_fScaleX * m_fWidth;
-	CSound *sounds[4] = {m_pSoundSelect, m_pSoundBack, m_pSoundGame, m_pSoundSlot};
-	for (int i = 0; i < 4; i++)
-	{
-		if (sounds[i] != NULL && sounds[i]->m_pBuffer != NULL)
-			sounds[i]->m_pBuffer->SetVolume(m_pSettings->GetSoundVolume());
-	}
 }
 
 // 0x0011C52C
@@ -671,7 +691,7 @@ void CGameManager::ScanGames()
 							StrFormat(folder, "%c:\\%s\\", slot + 'G', found.cFileName);
 						meta = MetaValue(meta);
 						wchar_t title[0x80];
-						StrUtf8ToWide(meta.c_str(), title, 0x80);
+						StrUtf8ToWide(meta.c_str(), title, 0x80 - 1);   // (fix: the size excludes the terminator)
 						SGameEntry *game = new SGameEntry(folder.c_str(), title, slot != 0, found.cFileName);
 						if (game != NULL)
 						{
@@ -732,7 +752,11 @@ unsigned __stdcall CGameManager::ScanThread(void *param)
 void CGameManager::Reload()
 {
 	m_bLoaded = FALSE;
-	m_games.clear();   // (the games aren't freed)
+	// (Fix: the old games are freed; the original leaked them, with their
+	// textures, on every rescan. No scan is running: input waits for it.)
+	for (std::vector<SGameEntry *>::iterator it = m_games.begin(); it != m_games.end(); ++it)
+		delete *it;
+	m_games.clear();
 	ShowMessage(GetStringA(STR_MSG_GAMESAVES_SEARCH), GetString(STR_INFORMATION), MSGBOX_BUTTONS_OK);
 	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0xA0000, ScanThread, this, CREATE_SUSPENDED, NULL);
 	if (thread == NULL || thread == INVALID_HANDLE_VALUE)
@@ -931,7 +955,7 @@ void CGameManager::DeleteSelected()
 		if (save != NULL)
 		{
 			name = StrFromWide(save->m_pszTitle);
-			if (info.mounted)
+			if (info.mounted && !save->m_bContent)   // (content isn't a save on M:)
 				XDeleteSaveGame("M:\\", save->m_pszTitle);
 			DeleteFolder(save->m_pszPath);
 		}
@@ -976,14 +1000,17 @@ void CGameManager::DeleteSelected()
 		}
 		else
 		{
-			// (The game isn't freed.)
+			// (Fix: the game is freed; the original leaked it.)
+			delete game;
 			m_games.erase(m_games.begin() + m_nGame);
 			if (m_games.size() == 0)
 				m_nGame = 0;
 			else if (m_nGame >= (int)m_games.size() - 1)
 				m_nGame = (int)m_games.size() - 1;
 		}
-		m_nSaveRows = (int)ceil((float)(UINT)m_games[m_nGame]->saves.size() * 0.25f);
+		// (Fix: with the last game deleted there's none to read; the
+		// original read past the empty list.)
+		m_nSaveRows = m_games.size() != 0 ? (int)ceil((float)(UINT)m_games[m_nGame]->saves.size() * 0.25f) : 0;
 		if (m_nSaveRow > m_nSaveRows)
 			m_nSaveRow = m_nSaveRows;
 	}

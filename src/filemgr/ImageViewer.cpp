@@ -124,7 +124,8 @@ HRESULT CImageViewer::LoadXbx(const char *path)   // 0x0011863F
 	m_nCurrent = 0;
 	m_dwTypes[0] = D3DRTYPE_TEXTURE;
 	g_nImageCount = 1;
-	MultiByteToWideChar(CP_ACP, 0, m_strPath.c_str(), (int)m_strPath.size(), m_szNames[0], 0x104);
+	memset(m_szNames[0], 0, sizeof(m_szNames[0]));   // (fix: the names weren't always terminated)
+	MultiByteToWideChar(CP_ACP, 0, m_strPath.c_str(), (int)m_strPath.size(), m_szNames[0], 0x103);
 	return S_OK;
 }
 
@@ -160,7 +161,8 @@ HRESULT CImageViewer::LoadImage(const char *path)   // 0x00118EE8
 			m_nCurrent = 0;
 			m_dwTypes[0] = D3DRTYPE_TEXTURE;
 			g_nImageCount = 1;
-			MultiByteToWideChar(CP_ACP, 0, m_strPath.c_str(), (int)m_strPath.size(), m_szNames[0], 0x104);
+			memset(m_szNames[0], 0, sizeof(m_szNames[0]));   // (fix: the names weren't always terminated)
+			MultiByteToWideChar(CP_ACP, 0, m_strPath.c_str(), (int)m_strPath.size(), m_szNames[0], 0x103);
 			return S_OK;
 		}
 	}
@@ -181,9 +183,14 @@ HRESULT CImageViewer::LoadImage(const char *path)   // 0x00118EE8
 		m_nCurrent = 0;
 		m_dwTypes[0] = D3DRTYPE_TEXTURE;
 		g_nImageCount = 1;
-		MultiByteToWideChar(CP_ACP, 0, m_strPath.c_str(), (int)m_strPath.size(), m_szNames[0], 0x104);
+		memset(m_szNames[0], 0, sizeof(m_szNames[0]));   // (fix: the names weren't always terminated)
+		MultiByteToWideChar(CP_ACP, 0, m_strPath.c_str(), (int)m_strPath.size(), m_szNames[0], 0x103);
 		return S_OK;
 	}
+	// (Fix: the arrays hold IMAGEVIEWER_MAX_IMAGES; the original took the
+	// file's count as it came.)
+	if (count > IMAGEVIEWER_MAX_IMAGES)
+		count = IMAGEVIEWER_MAX_IMAGES;
 	for (int i = 0; i < (int)count; i++)
 	{
 		D3DResource *resource = m_xpr.GetResource(m_pResourceTags[i].dwOffset);
@@ -192,7 +199,8 @@ HRESULT CImageViewer::LoadImage(const char *path)   // 0x00118EE8
 			m_pTextures[i] = (IDirect3DTexture8 *)m_xpr.GetResource(m_pResourceTags[i].dwOffset);
 			m_dwTypes[i] = D3DRTYPE_TEXTURE;
 			const char *name = m_pResourceTags[i].strName;
-			MultiByteToWideChar(CP_ACP, 0, name, (int)strlen(name), m_szNames[i], 0x104);
+			memset(m_szNames[i], 0, sizeof(m_szNames[i]));   // (fix: the names weren't always terminated)
+			MultiByteToWideChar(CP_ACP, 0, name, (int)strlen(name), m_szNames[i], 0x103);
 		}
 		else
 		{

@@ -66,8 +66,7 @@ HRESULT CMusicSetting::Init(CXBFont *font)
 	m_items.clear();
 
 	SAudioSettings &audio = g_pSettings->m_audio;
-	wchar_t text[260];
-	// (Quirk: a mode outside 0-3 leaves the buffer uninitialized.)
+	wchar_t text[260] = { 0 };   // (fix: a mode outside 0-3 left it uninitialized)
 	const wchar_t *mode = GetSoundTrackModeName(audio.m_nSoundTrackMode);
 	if (mode != NULL)
 		swprintf(text, 260, L"%s", mode);
@@ -91,8 +90,8 @@ HRESULT CMusicSetting::Init(CXBFont *font)
 	for (int i = 0; i < SOUND_EFFECT_COUNT; i++)
 	{
 		wchar_t label[50];
-		StrUtf8ToWide(s_effectNames[i], label, 50);
-		StrUtf8ToWide(audio.m_strSound[i].c_str(), text, 260);
+		StrUtf8ToWide(s_effectNames[i], label, 50 - 1);   // (fix: the size excludes the terminator)
+		StrUtf8ToWide(audio.m_strSound[i].c_str(), text, 260 - 1);   // (fix: the size excludes the terminator)
 		if (_wcsicmp(text, L"[None]") == 0)
 			memset(text, 0, sizeof(text));
 		AddItem(label, text, ITEM_EFFECT_FIRST + i, FALSE, audio.m_bSoundEffects);
@@ -282,7 +281,7 @@ BOOL CMusicSetting::Save()
 	}
 	if (settings == NULL || audioElement == NULL)
 	{
-		sprintf(message, GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
+		StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
 		ShowMessage(message, GetString(STR_ERROR), MSGBOX_BUTTONS_OK);
 		return FALSE;
 	}

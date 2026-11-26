@@ -322,7 +322,7 @@ static void CheckVersion(CLiveUpdate *page)
 
 	std::string text;
 	if (!session->m_bSavedToFile)
-		text = _strdup(session->GetData());   // (the copy is never freed)
+		text = session->GetData();   // (fix: no leaked _strdup copy)
 	else
 		text = ReadTextFile(session->m_szFile);
 	if (text.size() == 0 || text.size() > 0x1400)
@@ -508,7 +508,7 @@ unsigned __stdcall CLiveUpdate::InstallThread(void *param)
 		g_pMusicManager->Stop();   // (in a try/catch(...) in the original)
 	Sleep(500);
 
-	std::string download = _strdup(page->m_pSession->m_szFile);   // (never freed)
+	std::string download = page->m_pSession->m_szFile;   // (fix: no leaked _strdup copy)
 	Sleep(100);
 	// Anything under 1 MB isn't an update.
 	WIN32_FILE_ATTRIBUTE_DATA attributes;
@@ -541,10 +541,13 @@ unsigned __stdcall CLiveUpdate::InstallThread(void *param)
 	memset(signature, 0, sizeof(signature));
 	HexToBytes("526172211A0700", signature);
 	FILE *file = fopen(archive.c_str(), "r+b");
-	fseek(file, 0, SEEK_SET);
-	fwrite(signature, 1, 7, file);
-	fflush(file);
-	fclose(file);
+	if (file != NULL)   // (fix: the original used the FILE * unchecked)
+	{
+		fseek(file, 0, SEEK_SET);
+		fwrite(signature, 1, 7, file);
+		fflush(file);
+		fclose(file);
+	}
 	Sleep(1000);
 
 	std::string rarFile = archive;
@@ -613,7 +616,7 @@ BOOL CLiveUpdate::Save()
 	CXmlElement *settings = g_config.FindElement(&g_config.m_root, "Settings");
 	if (settings == NULL)
 	{
-		sprintf(message, GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
+		StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
 		ShowMessage(message, GetString(STR_ERROR), MSGBOX_BUTTONS_OK);
 		return FALSE;
 	}

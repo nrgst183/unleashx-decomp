@@ -80,6 +80,27 @@ int main()
 		failures++;
 	}
 	xip.Close();
+
+	// A data offset before the names: refused, and the archive is left
+	// closed, so the next Open (and a Close) free nothing twice.
+	std::string bad = file;
+	bad[4] = 0x10, bad[5] = bad[6] = bad[7] = 0;
+	f = fopen("build/bad.xip", "wb");
+	fwrite(bad.data(), 1, bad.size(), f);
+	fclose(f);
+	memset(&xip, 0, sizeof(xip));
+	if (xip.Open("build/bad.xip") != E_FAIL || xip.m_pEntries != NULL || xip.m_pFile != NULL)
+	{
+		printf("FAIL: bad offsets\n");
+		failures++;
+	}
+	xip.Close();
+	if (xip.Open("build/test.xip") != S_OK)
+	{
+		printf("FAIL: reopen after a failure\n");
+		failures++;
+	}
+	xip.Close();
 	memset(&xip, 0, sizeof(xip));
 	if (xip.Open("build/no-such.xip") != E_INVALIDARG)
 	{

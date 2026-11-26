@@ -55,7 +55,7 @@ SZipEntry::SZipEntry(const char *entryName, DWORD originalSize, DWORD packedSize
 	marked = FALSE;
 	wchar_t text[0x104];
 	memset(text, 0, sizeof(text));
-	MultiByteToWideChar(CP_ACP, 0, entryName, (int)strlen(entryName), text, 0x104);
+	MultiByteToWideChar(CP_ACP, 0, entryName, (int)strlen(entryName), text, 0x103);   // (fix: room for the terminator)
 	name = text;
 	// "packed/original" (the original without " B").
 	memset(text, 0, sizeof(text));
@@ -336,7 +336,7 @@ unsigned __stdcall CZipManager::ExtractThread(void *param)
 					CreateDirectoryTree(folder.c_str());
 				}
 				memset(zip->m_szCurrentFile, 0, sizeof(zip->m_szCurrentFile));
-				MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, zip->m_szCurrentFile, 0x104);
+				MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, zip->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 				if (UnzipItem(handle, it->index, (void *)path.c_str(), 0, ZIP_FILENAME) != ZR_OK)
 				{
 					zip->m_bFailed = TRUE;
@@ -359,7 +359,7 @@ unsigned __stdcall CZipManager::ExtractThread(void *param)
 					StrReplaceAll(path, "\\\\", "\\");
 					DeleteFileA(path.c_str());
 					memset(zip->m_szCurrentFile, 0, sizeof(zip->m_szCurrentFile));
-					MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, zip->m_szCurrentFile, 0x104);
+					MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, zip->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 					if (UnzipItem(handle, current.index, (void *)path.c_str(), 0, ZIP_FILENAME) == ZR_OK)
 					{
 						SetFileAttributesA(path.c_str(), FILE_ATTRIBUTE_NORMAL);
@@ -403,7 +403,7 @@ unsigned __stdcall CZipManager::ExtractThread(void *param)
 				if (it->isFolder)
 					continue;
 				memset(zip->m_szCurrentFile, 0, sizeof(zip->m_szCurrentFile));
-				MultiByteToWideChar(CP_ACP, 0, it->path.c_str(), (int)it->path.size(), zip->m_szCurrentFile, 0x104);
+				MultiByteToWideChar(CP_ACP, 0, it->path.c_str(), (int)it->path.size(), zip->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 				name = it->path;
 				if (StrFind(name, ":") != -1)
 					name = StrMid(name, 3, (int)name.size() - 3);
@@ -661,7 +661,7 @@ BOOL CZipManager::Render()
 	         g_colorScheme.DIALOG_BORDERCOLOR, g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
 	wchar_t title[0x104];
 	memset(title, 0, sizeof(title));
-	MultiByteToWideChar(CP_ACP, 0, m_strZipFile.c_str(), (int)m_strZipFile.size(), title, 0x104);
+	MultiByteToWideChar(CP_ACP, 0, m_strZipFile.c_str(), (int)m_strZipFile.size(), title, 0x103);   // (fix: room for the terminator)
 	m_pCaptionFont->DrawText(m_fX + 12.0f,
 	                         (m_pCaptionFont->m_fScaleFactorY * m_pCaptionFont->m_fFontHeight + 10.0f) * 0.5f + m_fY,
 	                         g_colorScheme.CAPTION_TEXTCOLOR, title, XBFONT_CENTER_Y | XBFONT_TRUNCATED,

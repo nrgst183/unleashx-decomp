@@ -176,6 +176,9 @@ static void AddXbeToFolder(CXmlElement *folder, const char *xbePath, BOOL quick)
 		{
 			if (g_pSettings->m_bRunFromDVD)
 				StrFormat(text, "Z:\\Media\\%08x.xbx", info.titleId);
+			// (Fix: the icon is set even when the copy can't be made (a full
+			// or missing E:, or a DVD): the menu reads it from the XBE.)
+			item->SetAttribute("Icon", text.c_str());
 			if (!ExtractXbeTitleImage(path.c_str(), text.c_str()))
 			{
 				StrFormat(text, "E:\\UDATA\\%08x", info.titleId);
@@ -183,7 +186,6 @@ static void AddXbeToFolder(CXmlElement *folder, const char *xbePath, BOOL quick)
 			}
 			else
 			{
-				item->SetAttribute("Icon", text.c_str());
 				if (!g_pSettings->m_bRunFromDVD)
 				{
 					std::string meta;

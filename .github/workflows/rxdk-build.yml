@@ -1,0 +1,33 @@
+# The RXDK build (Makefile.rxdk) up to the linked default.exe, with its checks
+# (.eh_frame bracket, no SSE2). imagebld isn't run here: making the XBE needs
+# RXDK's .NET host tools (see BUILDING.md).
+name: rxdk build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      RXDK: ${{ github.workspace }}/rxdk-install
+      # RXDK-SDK v1.3.12 (the repository has no tags)
+      RXDK_SDK_COMMIT: 2c2c301be6767985da89f91519b856c0f5005a56
+    steps:
+      - uses: actions/checkout@v4
+      - name: RXDK SDK
+        run: |
+          git init -q "$RXDK/sdk"
+          git -C "$RXDK/sdk" fetch -q --depth 1 https://github.com/Team-Resurgent/RXDK-SDK.git "$RXDK_SDK_COMMIT"
+          git -C "$RXDK/sdk" checkout -q FETCH_HEAD
+      - name: RXDK LLVM toolchain
+        run: |
+          mkdir -p "$RXDK/llvm"
+          curl -sSfL -o llvm.zip https://github.com/Team-Resurgent/llvm-project/releases/download/latest/xbox-linux-x64.zip
+          unzip -q llvm.zip -d "$RXDK/llvm"
+          chmod -R +x "$RXDK/llvm/xbox-linux-x64/bin"
+      - run: make -f Makefile.rxdk info
+      - run: make -f Makefile.rxdk -j"$(nproc)" exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unleashx-rxdk-exe
+          path: |
+            build/rxdk/default.exe
+            build/rxdk/default.map

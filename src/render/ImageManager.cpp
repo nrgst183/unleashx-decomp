@@ -46,12 +46,20 @@ IDirect3DTexture8 *CImageManager::Load(const char *path, UINT width, UINT height
 				texture = NULL;
 		}
 	}
-	else if (!LoadTextureFromFile(path, g_pd3dDevice, &texture, width, height, NULL))
+	else if (!LoadTextureFromFileMax(path, g_pd3dDevice, &texture, (int)width, (int)height))
 	{
 		texture = NULL;
 	}
+	// (Fix: the caller gets a reference of its own. The original handed the
+	// first caller the cache's, so when that caller released it (a deleted
+	// save, a game's saves freed) the cache kept a freed texture. Its memory
+	// went to the next texture made, often the menu's preview of an XBE, and
+	// the saves screen then showed that XBE's picture for the game or save.)
 	if (texture != NULL)
+	{
 		m_textures[path] = texture;
+		texture->AddRef();
+	}
 	return texture;
 }
 

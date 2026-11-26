@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstring>
 
+#include "../common/FrameTime.h"
 #include "../app/MenuItemEditor.h"
 #include "../app/Screens.h"
 #include "../render/D3D.h"
@@ -57,19 +58,25 @@ static D3DRECT ClipToScreen(float x, float y, float width, float height)
 }
 
 // The selected item's icon is kept (with a reference) for the skin's
-// icon image. Quirk: the reference to the previous one isn't released.
+// icon image (<GameIcon>, the orb, the loading screen).
+// (Fix: the original only ever set it, from an item with an icon. Moving
+// with the d-pad cleared it (FinishMove), but selecting with the mouse, or
+// the selection moving when an item was deleted, left the last icon up for
+// an item without one: another XBE's icon. It also never released the
+// reference it replaced, and an icon that finished loading after the item
+// was selected never showed. It now always follows the selected item.)
 static void KeepSelectedIcon(CMenu *menu, CMenuItem *item, int index, int &iconOf)
 {
-	if (index != menu->m_nSelected || item->m_pTexture == NULL)
+	if (index != menu->m_nSelected)
 		return;
-	if (menu->m_pIconTexture == NULL)
-		iconOf = -1;
-	if (iconOf != menu->m_nSelected)
-	{
-		menu->m_pIconTexture = item->m_pTexture;
-		item->m_pTexture->AddRef();
-		iconOf = menu->m_nSelected;
-	}
+	iconOf = index;
+	if (menu->m_pIconTexture == item->m_pTexture)
+		return;
+	if (menu->m_pIconTexture != NULL)
+		menu->m_pIconTexture->Release();
+	menu->m_pIconTexture = item->m_pTexture;
+	if (menu->m_pIconTexture != NULL)
+		menu->m_pIconTexture->AddRef();
 }
 
 // An item's icon: its own, or (inside a sub-list) the folder icon.
@@ -214,14 +221,13 @@ HRESULT CMenu::Render()
 						last = m_nLastVisible;
 				}
 			}
-			// Smooth scrolling: the lines slide a pixel less each 5 ms.
+			// Smooth scrolling: the lines slide a pixel less each 60 Hz frame.
+			// (Fix: by time; the original took a pixel off each frame more
+			// than 5 ms apart.)
 			if (m_nScrollDirection != 0)
 			{
-				if (GetTickCount() - m_dwScrollStart > 5)
-				{
-					m_fScrollSpeed -= 1.0f;
-					m_dwScrollStart = GetTickCount();
-				}
+				m_fScrollSpeed -= FrameScale();
+				m_dwScrollStart = GetTickCount();
 				if (m_fScrollSpeed <= 0.0f)
 				{
 					m_nScrollDirection = 0;
@@ -301,10 +307,9 @@ HRESULT CMenu::Render()
 									{
 										// <Menu Scroll>: the text runs right to
 										// left, a pixel every <ScrollSpeed> ms.
-										DWORD now = GetTickCount();
-										BOOL step = m_dwMarqueeTick < now;
-										if (step)
-											m_dwMarqueeTick = m_pSettings->m_nScrollSpeed + now;
+										// (Fix: it moves smoothly, at the pace it
+										// had at 60 fps, whatever the frame rate.)
+										BOOL step = (long)(GetTickCount() - m_dwMarqueeTick) > 0;
 										D3DRECT line;
 										line.x1 = (long)(iconWidth + rowX);
 										float top = rowY - (float)m_nScrollDirection * m_fScrollSpeed;
@@ -319,7 +324,8 @@ HRESULT CMenu::Render()
 											if ((float)line.x1 > (textPixels + rowX) - m_fMarqueeOffset)
 												m_fMarqueeOffset = iconWidth - width;   // gone: in again from the right
 											else
-												m_fMarqueeOffset = m_fMarqueeOffset + 1.0f;
+												m_fMarqueeOffset =
+												    m_fMarqueeOffset + FrameSteps((DWORD)m_pSettings->m_nScrollSpeed);
 										}
 										SetFontCursor(m_pFont, rowX - m_fMarqueeOffset, m_fContextMenuY);
 										DrawFontText(m_pFont, textColor, item->m_pszText, XBFONT_CENTER_Y, textWidth);
@@ -427,7 +433,7 @@ HRESULT CMenu::Render()
 				else
 					arrowX = iconWidth * 0.5f;
 				arrowX = arrowX + x;
-				s_fArrowAlpha = s_fArrowStep * 0.025f + s_fArrowAlpha;
+				s_fArrowAlpha = s_fArrowStep * FrameStep(0.025f) + s_fArrowAlpha;   // (fix: by time)
 				if (first > 0)
 					DrawTriangle(arrowX, (y - arrowHeight) - 2.0f, arrowWidth, arrowHeight, 1,
 					             g_colorScheme.DIALOG_INNER_BORDERCOLOR, g_colorScheme.DIALOG_INNER_BACKCOLOR,
@@ -534,11 +540,15 @@ void CMenu::RenderHorizontal()
 	int last = m_nLastVisible;
 	if (m_bFixed)
 	{
-		int fixRow = m_nFixAt - 1;
+		// (Fix: clamped as in the vertical layout; a skin's FixAt of 0 or
+		// less, such as "FFFFFFFF", put first past the last item.)
+		int fixRow = m_nFixAt - 1 >= 0 ? m_nFixAt - 1 : 0;
 		int blank = fixRow - m_nSelected < 0 ? 0 : fixRow - m_nSelected;
 		first = m_nSelected - fixRow;
 		if (first < 0)
 			first = 0;
+		if (first > (int)m_nItemCount)
+			first = (int)m_nItemCount;
 		last = (m_nVisibleItems - blank) + first;
 		if ((UINT)last >= (UINT)(m_nItemCount - 1))
 			last = m_nItemCount - 1;
@@ -551,11 +561,8 @@ void CMenu::RenderHorizontal()
 	}
 	if (m_nScrollDirection != 0)
 	{
-		if (GetTickCount() - m_dwScrollStart > 5)
-		{
-			m_fScrollSpeed -= 1.0f;
-			m_dwScrollStart = GetTickCount();
-		}
+		m_fScrollSpeed -= FrameScale();   // (fix: by time, as in Render)
+		m_dwScrollStart = GetTickCount();
 		if (m_nScrollDirection != 0 && m_fScrollSpeed <= 0.0f)
 			m_nScrollDirection = 0;
 		else
@@ -698,7 +705,7 @@ void CMenu::RenderHorizontal()
 		float arrowY = lineHeight * 0.5f + y;
 		ScaleToScreen(NULL, &arrowWidth, NULL, &arrowHeight, FALSE);
 		arrowY = arrowY - arrowHeight * 0.5f;
-		s_fRowArrowAlpha = s_fRowArrowStep * 0.025f + s_fRowArrowAlpha;
+		s_fRowArrowAlpha = s_fRowArrowStep * FrameStep(0.025f) + s_fRowArrowAlpha;   // (fix: by time)
 		if (first > 0)
 			DrawTriangle((x - arrowWidth) - spacing, arrowY, arrowWidth, arrowHeight, 3,
 			             g_colorScheme.DIALOG_INNER_BORDERCOLOR, g_colorScheme.DIALOG_INNER_BACKCOLOR,
@@ -780,11 +787,15 @@ void CMenu::RenderItems()
 		last = first + m_nSkinVisibleItems;
 	if (m_bFixed)
 	{
-		int fixRow = m_nFixAt - 1;
+		// (Fix: clamped as in the vertical layout; a skin's FixAt of 0 or
+		// less, such as "FFFFFFFF", put first past the last item.)
+		int fixRow = m_nFixAt - 1 >= 0 ? m_nFixAt - 1 : 0;
 		int blank = fixRow - m_nSelected < 0 ? 0 : fixRow - m_nSelected;
 		first = m_nSelected - fixRow;
 		if (first < 0)
 			first = 0;
+		if (first > (int)m_nItemCount)
+			first = (int)m_nItemCount;
 		last = first + (m_nVisibleItems - blank);
 		if ((UINT)last >= (UINT)(m_nItemCount - 1))
 			last = m_nItemCount - 1;
@@ -820,8 +831,9 @@ void CMenu::RenderItems()
 				break;
 			if (m_nScrollDirection != 0)
 			{
-				// Quirk: the glide slows by a step per item drawn, not by time.
-				m_fScrollSpeed -= 1.0f;
+				// Quirk: the glide slows by a step per item drawn. (Fix: a
+				// step per item each 60 Hz frame, not each frame.)
+				m_fScrollSpeed -= FrameScale();
 				if (m_fScrollSpeed <= 0.0f)
 				{
 					m_nScrollDirection = 0;
@@ -892,10 +904,8 @@ void CMenu::RenderItems()
 							if (m_bScrollText && textPixels > itemWidth)
 							{
 								// <Menu Scroll>, clipped to the line on the display.
-								DWORD now = GetTickCount();
-								BOOL step = m_dwMarqueeTick < now;
-								if (step)
-									m_dwMarqueeTick = m_pSettings->m_nScrollSpeed + now;
+								// (Fix: smooth, at its 60 fps pace.)
+								BOOL step = (long)(GetTickCount() - m_dwMarqueeTick) > 0;
 								float displayWidth = 640.0f;
 								float displayHeight = 480.0f;
 								GetDisplaySize(&displayWidth, &displayHeight, FALSE);
@@ -912,7 +922,7 @@ void CMenu::RenderItems()
 									if ((float)line.x1 > (textPixels + itemX) - m_fMarqueeOffset)
 										m_fMarqueeOffset = iconWidth - width;
 									else
-										m_fMarqueeOffset = m_fMarqueeOffset + 1.0f;
+										m_fMarqueeOffset = m_fMarqueeOffset + FrameSteps((DWORD)m_pSettings->m_nScrollSpeed);
 								}
 								SetFontCursor(m_pFont, itemX - m_fMarqueeOffset, m_fContextMenuY);
 								DrawFontText(m_pFont, textColor, item->m_pszText, XBFONT_CENTER_Y, itemWidth);

@@ -34,3 +34,6 @@ public:
 
 // Releases the icon cache (CMenu's destructor).
 void FreeIconCache();
+// (Not in the original.) Forgets the icons no menu item holds any more, so
+// browsing many lists doesn't keep every icon ever shown.
+void PruneIconCache();

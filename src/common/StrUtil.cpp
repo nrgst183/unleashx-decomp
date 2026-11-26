@@ -183,6 +183,20 @@ std::string &StrFormat(std::string &out, const char *fmt, ...)
 	return out;
 }
 
+void StrFormatBuf(char *buf, size_t size, const char *fmt, ...)
+{
+	if (buf == NULL || size == 0)
+		return;
+	std::string text;
+	va_list args;
+	va_start(args, fmt);
+	StrFormatV(text, fmt, args);
+	va_end(args);
+	size_t n = text.size() < size - 1 ? text.size() : size - 1;
+	memcpy(buf, text.c_str(), n);
+	buf[n] = '\0';
+}
+
 // 0x000191A9 / 0x000191C2
 int StrFind(const std::string &str, const char *s, int pos)
 {

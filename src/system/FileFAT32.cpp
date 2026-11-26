@@ -247,7 +247,8 @@ BOOL CDirFAT32::CopyFileEx(const char *source, const char *destination, CopyProg
 	FAT32_FILE *in = Fat32Open(Fat32GetIo(m_pVolume), source, "r");
 	if (in == NULL)
 	{
-		SetLastError(2);   // ERROR_FILE_NOT_FOUND (buffer leaked)
+		delete[] buffer;   // (fix: the original leaked the 128 KB buffer here)
+		SetLastError(2);   // ERROR_FILE_NOT_FOUND
 		return FALSE;
 	}
 	IFile *out = CreateFileObject(destination);
@@ -262,7 +263,9 @@ BOOL CDirFAT32::CopyFileEx(const char *source, const char *destination, CopyProg
 	{
 		Fat32Close(in, Fat32GetIo(m_pVolume));
 		delete[] buffer;
-		SetLastError(GetLastError());   // (out is leaked)
+		DWORD error = GetLastError();
+		delete out;   // (fix: the original leaked it)
+		SetLastError(error);
 		return FALSE;
 	}
 
@@ -322,7 +325,7 @@ BOOL CDirFAT32::CreateDirectory(const char *path, void * /*security*/)
 {
 	if (GetVolume() == NULL)
 		return FALSE;
-	std::string all = _strdup(path);   // (never freed)
+	std::string all = path;   // (fix: no leaked _strdup copy)
 	if (all.size() <= 3)
 		return FALSE;
 	StrReplaceAll(all, "/", "\\");

@@ -5,6 +5,7 @@
 // menu moves.
 #include <cmath>
 
+#include "../common/FrameTime.h"
 #include "../media/WMVideoPlayer.h"
 #include "../render/D3D.h"
 #include "../render/Draw.h"
@@ -106,8 +107,9 @@ void CUnleashX::InitOrb()
 }
 
 // The orb's position and spin.
-static float s_fAspect;            // 0x0027A36C 1, or 640 / the screen width when wider
+static float s_fAspect;            // 0x0027A36C 1, or 0.75 on a 16:9 picture
 static bool s_bAspectSet;          // 0x0027A370 bit 0
+static float s_fAspectFor;         // the g_fPictureAspect s_fAspect is for
 static float s_fOrbX;              // 0x00278D30 -12 (set on first use)
 static float s_fOrbY;              // 0x00278D2C 6.5
 static float s_fOrbAngle;          // 0x00278D28 its turn about the view axis
@@ -147,23 +149,27 @@ static void UpdateOrbSpin(int selected)
 				s_fSpinFrames = 30.0f;
 			}
 			s_fLastSpin = g_fGlobeSpin;
-			if (GetTickCount() - g_dwGlobeSpinTime > 5)
+			// (Fix: the countdown and the turn go by time. The original
+			// counted a frame off every frame more than 5 ms apart, so the
+			// 15 degree spin took half a second at 60 fps and less faster.)
+			float frames = FrameScale();
+			if (frames > s_fSpinFrames)
+				frames = s_fSpinFrames;
+			s_fSpinFrames -= frames;
+			g_dwGlobeSpinTime = GetTickCount();
+			if (s_fSpinFrames <= 0.0f)
 			{
-				s_fSpinFrames -= 1.0f;
-				g_dwGlobeSpinTime = GetTickCount();
-			}
-			if (s_fSpinFrames < 0.0f)
 				s_fSpinFrames = 0.0f;
-			if (s_fSpinFrames == 0.0f)
-			{
 				s_fSpinDirection = g_fGlobeSpin;
 				g_fGlobeSpin = 0.0f;
 				s_nSpinItem = selected;
 			}
+			s_fOrbAngle += s_fSpinStep * s_fLastSpin * frames;
+			return;
 		}
 		delta = s_fSpinStep * g_fGlobeSpin;
 	}
-	s_fOrbAngle += delta;
+	s_fOrbAngle += FrameStep(delta);
 }
 
 // 0x000E0E0F
@@ -172,13 +178,19 @@ static void UpdateOrbSpin(int selected)
 HRESULT CUnleashX::RenderBackground()
 {
 	IDirect3DDevice8 *device = g_pd3dDevice;
-	if (!s_bAspectSet)
+	// (Fix: the projection is always 4:3, so on a 16:9 picture the orb is
+	// drawn 4/3 too wide and is narrowed by 3/4. The original narrowed it by
+	// 640 / the screen's width, set once: half at 720p and a third at 1080i,
+	// too little at 720x480 widescreen, and narrowed at 4:3 480p, which is
+	// 720 wide too.)
+	if (!s_bAspectSet || s_fAspectFor != g_fPictureAspect)
 	{
 		s_bAspectSet = true;
-		if (m_dwScreenWidth <= 640)
-			s_fAspect = 1.0f;
+		s_fAspectFor = g_fPictureAspect;
+		if (g_fPictureAspect > 0.0f)
+			s_fAspect = 1.0f;   // the Windows build's projection has the window's shape
 		else
-			s_fAspect = 640.0f / (float)(unsigned)g_pSettings->m_viewport.Width;
+			s_fAspect = (g_pPresentParams->Flags & D3DPRESENTFLAG_WIDESCREEN) ? 0.75f : 1.0f;
 	}
 	if (s_fOrbX == 0.0f)
 	{

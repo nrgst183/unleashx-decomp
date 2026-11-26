@@ -145,6 +145,19 @@ int main()
 	printf("< %s\n", reply.c_str());
 	CHECK(reply == "220 UnleashX FTP Server ready.");
 
+	// Client text in a reply is sent as it is, never used as a format (here
+	// before login, on a connection of its own).
+	{
+		int probe = Connect(port);
+		CHECK(probe >= 0);
+		if (probe >= 0)
+		{
+			ReadReply(probe);
+			CHECK(Command(probe, "USER %s%s%s%n") == "331 Password required for %s%s%s%n");
+			Command(probe, "QUIT");
+			close(probe);
+		}
+	}
 	CHECK(StartsWith(Command(control, "USER xbox"), "331 Password required for xbox"));
 	CHECK(Command(control, "PASS xbox") == "230 Welcome to XBOX FTP Server");
 	CHECK(Command(control, "SYST") == "215 UNIX emulated by [UnleashX] Avalaunch 0.47.5");
@@ -155,6 +168,11 @@ int main()
 	CHECK(Command(control, "TYPE I") == "200 Type set to IMAGE.");
 	CHECK(Command(control, "NOOP") == "200 OK.");
 	CHECK(Command(control, "XYZZY") == "502 \"XYZZY\" not implemented - Try HELP.");
+	CHECK(Command(control, "X%xY") == "502 \"X%XY\" not implemented - Try HELP.");   // (commands are uppercased)
+	// A path far longer than the 260-byte buffer the original converted it in.
+	std::string longCwd = "CWD /E/" + std::string(3000, 'a');
+	CHECK(StartsWith(Command(control, longCwd.c_str()), "5"));
+	CHECK(Command(control, "PWD") == "257 \"/E/ftp\" is current directory.");
 
 	// LIST
 	int data = OpenPassive(control);

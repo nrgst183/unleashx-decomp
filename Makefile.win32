@@ -1,0 +1,130 @@
+# The Windows build: UnleashX as a native 32-bit Windows program, the Xbox
+# APIs it calls provided by xbox/win32 (Direct3D 8 on Direct3D 9, XInput,
+# sound through waveOut, the Xbox drives as folders, ...). Visual Studio
+# users open win32/UnleashX.sln instead (tools/gen_vcxproj_win32.py); this is
+# the same build with llvm-mingw (https://github.com/mstorsjo/llvm-mingw), on
+# Linux, macOS or Windows.
+#
+#   make -f Makefile.win32 -j8        build/win32/UnleashX.exe
+#   make -f Makefile.win32 run        ...and run it (Wine on Linux/macOS)
+#
+# MINGW is the llvm-mingw folder (default: i686-w64-mingw32-clang++ on the
+# path, else ~/llvm-mingw).
+
+MINGW ?= $(if $(shell command -v i686-w64-mingw32-clang++ 2>/dev/null),,$(HOME)/llvm-mingw)
+BIN := $(if $(MINGW),$(MINGW)/bin/,)
+CXX := $(BIN)i686-w64-mingw32-clang++
+CC := $(BIN)i686-w64-mingw32-clang
+WINDRES := $(BIN)i686-w64-mingw32-windres
+
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+OUT := build/win32-debug
+OPT := -O0 -g
+else
+OUT := build/win32
+OPT := -O2 -g
+endif
+OBJ := $(OUT)/obj
+
+MEDIA_ZIP := assets/media.zip
+SKINS_ZIP := assets/internal_skins.zip
+file_size = $(strip $(shell wc -c < $(1)))
+
+# The dash and the Xbox side of xbox/win32: the Xbox headers first.
+XBOX_INCS := -Ixbox/win32/include -Ixbox/win32
+COMMON_FLAGS = $(OPT) -march=pentium4 -mfpmath=sse -D_XBOX -DXBOX -DUX_WIN32 -DNDEBUG -D_CRT_SECURE_NO_WARNINGS \
+	-fms-extensions -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks \
+	-Wno-c++11-narrowing -Wno-multichar -Wno-unknown-pragmas -Wno-microsoft-goto -Wno-microsoft-cast \
+	-Wno-writable-strings -Wno-pragma-pack -Wno-ignored-attributes -Wno-address-of-temporary
+CXX_FLAGS := -x c++ -std=c++17
+C_FLAGS := -x c -std=gnu17
+UX_FLAGS = -DDEBUG_MOUSE -DMEDIA_FILE_SIZE=$(call file_size,$(MEDIA_ZIP)) \
+	-DINT_SKINS_SIZE=$(call file_size,$(SKINS_ZIP)) -Wall -Wno-delete-non-virtual-dtor -Wno-missing-braces \
+	-Wno-unused-private-field -Wno-unused-variable -Wno-unused-but-set-variable
+TP_FLAGS := -w -Wno-register
+
+SRCS := $(filter-out src/common/PlatformHost.cpp src/net/XNetHost.cpp, $(sort $(wildcard src/*/*.cpp)))
+SUPPORT_SRCS := $(filter-out xbox/RxdkCompat.cpp, $(sort $(wildcard xbox/*.cpp)))
+# xbox/win32: XFoo.cpp implement the Xbox APIs (Xbox headers); WinFoo.cpp
+# talk to Windows (Direct3D 9, XInput, the window) with the real headers.
+X_SRCS := $(sort $(wildcard xbox/win32/X*.cpp))
+WIN_SRCS := $(sort $(wildcard xbox/win32/Win*.cpp))
+
+TP := thirdparty
+MAD_SRCS := bit decoder fixed frame huffman layer12 layer3 stream synth timer version
+RAR_SRCS := archive arcread cmddata consio crc crypt encname errhnd extinfo extract filcreat file filefn \
+	filestr find getbits global int64 isnt log match options pathfn rar rarvm rawread rdwrfn recvol resource \
+	rijndael rs savepos scantree sha1 strfn strlist system timefn ulinks unicode unpack volume
+FATIO_SRCS := fat_access fat_cache fat_filelib fat_format fat_misc fat_string fat_table fat_write
+
+OBJS := $(patsubst src/%.cpp,$(OBJ)/%.o,$(SRCS)) $(patsubst xbox/%.cpp,$(OBJ)/xbox/%.o,$(SUPPORT_SRCS)) \
+	$(patsubst xbox/win32/%.cpp,$(OBJ)/win32/%.o,$(X_SRCS) $(WIN_SRCS)) \
+	$(OBJ)/tp/unzip.o $(OBJ)/tp/zip.o $(OBJ)/tp/ftpparse.o $(patsubst %,$(OBJ)/tp/fat_%.o,$(FATIO_SRCS)) \
+	$(patsubst %,$(OBJ)/tp/mad_%.o,$(MAD_SRCS)) $(patsubst %,$(OBJ)/tp/rar_%.o,$(RAR_SRCS)) \
+	$(OBJ)/UnleashX.res.o
+
+LIBS := -ld3d9 -lksguid -lws2_32 -lwinmm -lole32 -luuid -lwindowscodecs -lgdi32 -luser32 -lkernel32 -ladvapi32 \
+	-lshell32 -lshlwapi
+
+all: $(OUT)/UnleashX.exe disc
+
+# UnleashX's own files (Config.xml, the languages, Skins) next to the program,
+# in "disc"; the first run copies them to its folder on E: (xbox/win32/XMain.cpp).
+disc: $(OUT)/UnleashX.exe
+	@mkdir -p $(OUT)/disc
+	@cp -R assets/disc/. $(OUT)/disc/
+
+define compile
+	@mkdir -p $(dir $@)
+	@"$(CXX)" $(1) -c $< -o $@ -MMD -MF $@.d > $@.log 2>&1; status=$$?; grep -E "(error|warning):" $@.log | head -20; \
+		if [ $$status -ne 0 ]; then rm -f $@; exit 1; fi
+endef
+
+$(OBJ)/%.o: src/%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(XBOX_INCS) $(UX_FLAGS))
+$(OBJ)/app/Resources.o $(OBJ)/skin/SkinLoader.o: $(MEDIA_ZIP) $(SKINS_ZIP)
+$(OBJ)/xbox/%.o: xbox/%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(XBOX_INCS) $(UX_FLAGS))
+$(OBJ)/xbox/Fat32.o: UX_FLAGS += -DFATFS_USE_CUSTOM_OPTS_FILE -iquote xbox/include
+$(OBJ)/win32/X%.o: xbox/win32/X%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(XBOX_INCS) $(UX_FLAGS))
+$(OBJ)/win32/Win%.o: xbox/win32/Win%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) -U_XBOX -UXBOX -Ixbox/win32 $(UX_FLAGS))
+
+# (The third-party code that opens files gets the Xbox paths mapped too.)
+FILEMAP := -include xbox/win32/UxFileMap.h
+$(OBJ)/tp/unzip.o: $(TP)/zip_utils/unzip.cpp xbox/win32/UxFileMap.h
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) $(FILEMAP))
+$(OBJ)/tp/zip.o: $(TP)/zip_utils/zip.cpp xbox/win32/UxFileMap.h
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) $(FILEMAP))
+$(OBJ)/tp/ftpparse.o: $(TP)/ftpparse/ftpparse.c
+	$(call compile,$(C_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS))
+$(OBJ)/tp/fat_%.o: $(TP)/fat_io_lib/%.c xbox/include/fat_custom.h
+	$(call compile,$(C_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) -DFATFS_USE_CUSTOM_OPTS_FILE -iquote xbox/include)
+$(OBJ)/tp/mad_%.o: $(TP)/libmad/%.c
+	$(call compile,$(C_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) -DFPM_INTEL -DHAVE_CONFIG_H -DASO_ZEROCHECK -I$(TP)/libmad)
+$(OBJ)/tp/rar_%.o: $(TP)/unrar/%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(XBOX_INCS) $(TP_FLAGS) -D_LIB -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR -D_HAS_AUTO_PTR_ETC=1 -I$(TP)/unrar/shim -include unrar_xbox.h -DUX_FILEMAP_POSIX $(FILEMAP))
+
+# The resources the XBE carried as sections, and the icon.
+$(OBJ)/UnleashX.res.o: xbox/win32/UnleashX.rc $(MEDIA_ZIP) $(SKINS_ZIP) assets/default_font.xpr
+	@mkdir -p $(dir $@)
+	"$(WINDRES)" -I. $< -o $@
+
+-include $(OBJS:.o=.o.d)
+
+objs: $(OBJS)
+
+$(OUT)/UnleashX.exe: $(OBJS)
+	@echo "Linking $@"
+	@"$(CXX)" -o $@ $(OBJS) -mwindows -static $(LIBS) -Wl,--error-limit=0 -Wl,-Map,$(OUT)/UnleashX.map > $(OUT)/link.log 2>&1 || (cat $(OUT)/link.log; false)
+	@echo "Built $@"
+
+run: $(OUT)/UnleashX.exe
+	$(if $(filter Windows_NT,$(OS)),,wine) $(OUT)/UnleashX.exe
+
+clean:
+	rm -rf $(OUT)
+
+.PHONY: all disc objs run clean

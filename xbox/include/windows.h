@@ -3,6 +3,17 @@
 #pragma once
 #include <xtl.h>
 
+// winnt.h names zip.cpp uses that RXDK's <xtl.h> doesn't bring (the XDK's did).
+#ifndef Int32x32To64
+#define Int32x32To64(a, b) ((LONGLONG)(LONG)(a) * (LONGLONG)(LONG)(b))
+#endif
+#ifndef IMAGE_DOS_SIGNATURE
+#define IMAGE_DOS_SIGNATURE 0x5A4D      // MZ
+#define IMAGE_OS2_SIGNATURE 0x454E      // NE
+#define IMAGE_OS2_SIGNATURE_LE 0x454C   // LE
+#define IMAGE_NT_SIGNATURE 0x00004550   // PE00
+#endif
+
 // zip.cpp seeds its encryption salt with this; there are no windows.
 static void *GetDesktopWindow()
 {

@@ -1,0 +1,7 @@
+// The resources the XBE carries as sections (XLoadSection finds them by
+// name: xbox/win32/XApi.cpp).
+MEDIA_FILE RCDATA "assets/media.zip"
+DEF_FONT RCDATA "assets/default_font.xpr"
+INT_SKINS RCDATA "assets/internal_skins.zip"
+XTIMAGE RCDATA "assets/title_image.xpr"
+XSIMAGE RCDATA "assets/save_image.xpr"

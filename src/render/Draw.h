@@ -30,6 +30,11 @@ void DrawShadeFullScreen(IDirect3DTexture8 *texture, float alpha);   // 0x000A03
 // relative to 640x480 instead. Quirk: nothing changes (not even the
 // offset) when the screen is the skin's size; zero sizes stay zero.
 void ScaleToScreen(float *x, float *width, float *y, float *height, BOOL base640x480);   // 0x0009E34E
+// The picture's shape (width / height) when the Windows build draws at its
+// window's size, else 0 (the Xbox's modes). Then ScaleToScreen scales evenly
+// (the layout centered, at its own shape, rather than stretched) and the 3D
+// view has the window's shape. (Screen.cpp)
+extern float g_fPictureAspect;
 // The same for whole numbers (zeros stay zero).
 void ScaleToScreenInt(DWORD *x, DWORD *y, DWORD *width, DWORD *height);  // 0x0009E4D4
 // x, y, width, height; the position rounds down, the size up.

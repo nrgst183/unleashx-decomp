@@ -262,13 +262,21 @@ void CSettingsBase::DrawBackground()
 // 0x000C16C8
 void CSettingsBase::Reset()
 {
-	m_fLabelWidth = 0.0f;
-	m_fY = 30.0f;
 	m_bModified = FALSE;
 	m_bMessageBoxOpen = FALSE;
 	m_bKeyboardOpen = FALSE;
 	m_bAskSave = FALSE;
 	m_bClosed = FALSE;
+	Layout();
+	m_bClosed = FALSE;
+	RevertChanges();
+	LoadSounds();
+}
+
+void CSettingsBase::Layout()
+{
+	m_fLabelWidth = 0.0f;
+	m_fY = 30.0f;
 	m_fX = 40.0f;
 	m_fWidth = 560.0f;
 	m_fHeight = 420.0f;
@@ -281,10 +289,6 @@ void CSettingsBase::Reset()
 	if (height < m_fHeight)
 		m_fHeight = height;
 	ScaleToScreen(&m_fX, &m_fWidth, &m_fY, &m_fHeight, TRUE);
-
-	m_bClosed = FALSE;
-	RevertChanges();
-	LoadSounds();
 }
 
 // 0x000C5358
@@ -450,7 +454,7 @@ BOOL CSettingsBase::FinishSave(BOOL ok, const char *error, BOOL changed, BOOL ne
 		{
 			char message[100];
 			DWORD lastError = GetLastError();
-			sprintf(message, GetStringA(STR_MSG_SETTING_SAVE_ERROR), lastError);
+			StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_SAVE_ERROR), lastError);
 			ShowMessage(message, L"Save Error", MSGBOX_BUTTONS_OK);
 			ok = FALSE;
 		}

@@ -150,7 +150,7 @@ BOOL MountMemoryUnit(SDriveInfo *info, char drive)
 		std::string narrow = StrFromWide(name);   // (W2A in the original)
 		strncpy(info->devicePath, narrow.c_str(), 0x1D);
 		// (The space is read through the requested letter, not XAPI's.)
-		GetDiskSpace(drive, &info->totalBytes, &info->freeBytes, &info->usedBytes, 1);
+		GetDiskSpace(drive, info, 1);
 		memcpy(info->label, info->devicePath, 11);
 		return TRUE;
 	}
@@ -261,7 +261,7 @@ void UpdateDriveSpace(SDriveInfo *info)
 			}
 			else if (g_nDiscType != DISC_AUDIO)
 			{
-				GetDiskSpace(info->letter, &info->totalBytes, &info->freeBytes, &info->usedBytes, 1);
+				GetDiskSpace(info->letter, info, 1);
 			}
 		}
 	}
@@ -283,7 +283,7 @@ void UpdateDriveSpace(SDriveInfo *info)
 	}
 	else if (info->hasMedia)
 	{
-		GetDiskSpace(info->letter, &info->totalBytes, &info->freeBytes, &info->usedBytes, 1);
+		GetDiskSpace(info->letter, info, 1);
 	}
 	else
 	{
@@ -318,7 +318,12 @@ HRESULT GetUtilityDriveDevice(const char *drive, char *devicePath)
 	ULONG length = 0;
 	if (link != NULL && NtQuerySymbolicLinkObject(link, &target, &length) >= 0)
 	{
-		strcpy(devicePath, target.Buffer);
+		// (Fix: the kernel sets the length but writes no terminator, so the
+		// original's strcpy took the buffer's trailing spaces too, more than
+		// the caller's 0x29 bytes. devicePath must hold 0x29.)
+		size_t n = target.Length < 0x28 ? target.Length : 0x28;
+		memcpy(devicePath, target.Buffer, n);
+		devicePath[n] = '\0';
 		hr = S_OK;
 	}
 	NtClose(link);

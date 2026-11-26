@@ -33,6 +33,10 @@ public:
 	virtual HRESULT Cleanup();                        // 0x000E1B1E
 
 	void SetMode(int mode);                           // 0x000E568F
+	// (Windows build) Draws at width x height from now on: the device, the
+	// screen area, the font scale and the open screens' layouts. Called when
+	// the window is resized.
+	void ChangeResolution(unsigned width, unsigned height);
 	// Starts or stops the background sound (only in the menu, without
 	// soundtrack music or a preview with sound).
 	void PlayBackgroundSound(BOOL play);              // 0x000E045B

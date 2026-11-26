@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "../audio/MusicManager.h"
+#include "../common/FrameTime.h"
 #include "../input/Gamepad.h"
 #include "../media/WMVideoPlayer.h"
 #include "../render/D3D.h"
@@ -47,9 +48,81 @@ static DWORD s_dwMusicIdleUntil = 1;             // 0x0026CBFC 1 = check the pla
 static BOOL s_bLockedOut;                        // 0x00278D44 too many wrong passwords: turn off after the message
 static float s_fGlobeAngle;                      // 0x00278D34
 
+#ifdef UX_WIN32
+void CUnleashX::ChangeResolution(unsigned width, unsigned height)
+{
+	// The device at the new size. (Its viewport is the whole of it.)
+	m_dwScreenWidth = width;
+	m_dwScreenHeight = height;
+	m_d3dpp.BackBufferWidth = width;
+	m_d3dpp.BackBufferHeight = height;
+	g_pd3dDevice->Reset(XDK_CAST(D3DPRESENT_PARAMETERS *, &m_d3dpp));
+	g_fPictureAspect = (float)width / (float)height;
+	// The 3D view in the window's shape: wider shows more at the sides,
+	// taller more above and below, with the 4:3 view's middle where the
+	// evenly scaled layout puts it (so the orb stays with the menu).
+	const float fov = 1.1423974f;
+	float fovY = fov;
+	if (g_fPictureAspect < 4.0f / 3.0f)
+		fovY = 2.0f * (float)atan(tan(fov * 0.5f) * (4.0f / 3.0f) / g_fPictureAspect);
+	D3DXMatrixPerspectiveFovLH(XDK_CAST(D3DXMATRIX *, m_projMatrix), fovY, g_fPictureAspect, 1.0f, 200.0f);
+	g_pd3dDevice->SetTransform(D3DTS_PROJECTION, XDK_CAST(const D3DMATRIX *, m_projMatrix));
+
+	// The screen area: all of it (a PC monitor has no overscan to adjust
+	// for), and the cached display size.
+	SViewport &viewport = g_pSettings->m_viewport;
+	viewport.X = 0;
+	viewport.Y = 0;
+	viewport.Width = width;
+	viewport.Height = height;
+	viewport.MinZ = 0.0f;
+	viewport.MaxZ = 1.0f;
+	D3DVIEWPORT8 vp = {0, 0, width, height, 0.0f, 1.0f};
+	g_pd3dDevice->SetViewport(&vp);
+	float displayWidth, displayHeight;
+	GetDisplaySize(&displayWidth, &displayHeight, TRUE);
+
+	// Text as large as the picture allows: 1 at 640x480, 1.5 at 1280x720
+	// (as the Xbox's own 720p mode), by the smaller of the two scales.
+	float scale = (float)width / 640.0f;
+	if ((float)height / 480.0f < scale)
+		scale = (float)height / 480.0f;
+	if (scale < 0.5f)
+		scale = 0.5f;
+	g_pSettings->m_fFontScale = scale;
+
+	// The screens lay themselves out again.
+	if (g_skin.m_bLoaded)
+	{
+		m_menu.SetArea((float)g_skin.m_rcMenu.left, (float)g_skin.m_rcMenu.top, (float)g_skin.m_rcMenu.width,
+		               (float)g_skin.m_rcMenu.height);
+		m_menu.SetHorizontal(g_skin.m_bHorizontal);
+	}
+	if (m_pSettingsMenu != NULL)
+		m_pSettingsMenu->Layout();
+	if (m_pGameManager != NULL)
+		m_pGameManager->Layout();
+	if (m_pFileManager != NULL)
+		m_pFileManager->Relayout();
+	if (m_pSkinBrowser != NULL)
+		m_pSkinBrowser->Layout();
+	if (m_pSystemInfo != NULL)
+		m_pSystemInfo->Layout();
+	if (m_pTextEditor != NULL)
+		m_pTextEditor->Relayout();
+	COptionMenu::RelayoutAll();
+}
+#endif
+
 // 0x000EB93B
 HRESULT CUnleashX::FrameMove()
 {
+#ifdef UX_WIN32
+	// (Windows build) The window was resized: draw at its size.
+	unsigned newWidth, newHeight;
+	if (UxGfxTakeResize(&newWidth, &newHeight))
+		ChangeResolution(newWidth, newHeight);
+#endif
 	g_fFrameRate = m_fFPS;
 	DWORD now = 0;
 	now = GetTickCount();
@@ -627,7 +700,10 @@ done:
 	}
 	int next = m_nGlobeStep + m_nGlobePos;
 	float target = m_globePath[next];
-	angle = (target - m_globePath[m_nGlobePos]) / ((m_fFPS + 1.0f) * 0.15f) + angle;
+	// (Fix: by the frame's time. The original divided by the frame rate,
+	// a one-second average that lags behind and starts at 0; each step of
+	// the path takes 0.15 * (60 + 1) frames at 60 fps.)
+	angle = (target - m_globePath[m_nGlobePos]) * (m_fElapsedTime / (0.15f * (FRAME_TUNED_HZ + 1.0f) / FRAME_TUNED_HZ)) + angle;
 	s_fGlobeAngle = angle;
 	if (m_nGlobeStep == 1 ? (0.0f > angle || !(angle < target)) : !(target < angle))
 		m_nGlobePos = next;
@@ -791,7 +867,7 @@ void CUnleashX::UpdateScreenSaver(int *action)
 					setting = &prefs.m_strScreenSaverVideo;
 				else if (prefs.m_nScreenSaverType == 3)
 					setting = &prefs.m_strScreenSaverPath;
-				StrUtf8ToWide(setting->c_str(), source, 100);
+				StrUtf8ToWide(setting->c_str(), source, 100 - 1);   // (fix: the size excludes the terminator)
 				m_pScreenSaver->SetSource(source);
 				m_pScreenSaver->Start();
 				m_bScreenSaverActive = TRUE;

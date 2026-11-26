@@ -5,8 +5,11 @@
   xbe.py flat    <xbe> <out.bin>       write a flat memory image (base = XBE base)
   xbe.py layout  <xbe> <out.txt>       write section/thunk layout for the Ghidra import script
   xbe.py extract <xbe> <outdir>        dump each section's raw bytes to <outdir>/<name>.bin
-  xbe.py retail  <xbe> <out.xbe>       rescramble a debug XBE's entry point and kernel thunk
-                                       with the retail keys (imagebld writes debug ones)
+  xbe.py retail  <xbe> <out.xbe> [initflags]
+                                       rescramble a debug XBE's entry point and kernel thunk
+                                       with the retail keys (imagebld writes debug ones), and
+                                       optionally set the header's XAPI init flags (RXDK's
+                                       MSBuild imagebld step can't pass /INITFLAGS)
 """
 import os
 import struct
@@ -150,6 +153,8 @@ def main():
         d = bytearray(x.data)
         struct.pack_into('<I', d, 0x128, x.entry ^ XOR_EP_RETAIL)
         struct.pack_into('<I', d, 0x158, x.kernel_thunk ^ XOR_KT_RETAIL)
+        if len(sys.argv) > 4:
+            struct.pack_into('<I', d, 0x124, int(sys.argv[4], 0))
         open(sys.argv[3], 'wb').write(d)
     else:
         sys.exit(__doc__)

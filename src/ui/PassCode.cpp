@@ -89,10 +89,9 @@ void CPassCode::SetCode(const char *code)
 	m_strCode.clear();
 	if (code == NULL || strlen(code) == 0)
 		return;
-	char *upper = _strdup(code);   // (leaked)
-	for (char *p = upper; *p != '\0'; p++)
+	m_strCode = code;   // (fix: the original uppercased a _strdup copy it leaked)
+	for (std::string::iterator p = m_strCode.begin(); p != m_strCode.end(); ++p)
 		*p = (char)toupper((unsigned char)*p);
-	m_strCode = upper;
 	if (m_strCode.size() > 15)
 		m_strCode = StrLeft(m_strCode, 15);
 }

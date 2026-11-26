@@ -1,0 +1,916 @@
+/*
+ * Portions Copyright (c) Microsoft Corporation - Xbox XDK.
+ * Reworked / modified 2026 - Team Resurgent.
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * Team Resurgent's modifications are licensed GPL-3.0-or-later (see LICENSE.md);
+ * original Microsoft-authored portions remain (c) Microsoft Corporation.
+ */
+
+/*
+ * xbox.h - the public XAPI (libxapi) title surface.
+ *
+ * Declares the Xbox game/system services a title calls directly: XBE resource
+ * sections (XLoadSection), save games and content packages, soundtracks, the
+ * console configuration settings (XGetLanguage / XGetAVPack / XGetVideoFlags
+ * / ...), device enumeration and XInput (gamepad, debug mouse, rumble,
+ * lightgun), memory-unit and utility-drive mounting, XLaunchNewImage launch
+ * data, thread notifications, and the XMem / XPhysical allocators. Pulled by
+ * xapi.h and by the <xtl.h> umbrella; keyboard input lives in xkbd.h.
+ */
+
+#pragma once
+#define _XBOX_
+
+/* Calling-convention decoration for the XAPI exports. On Xbox the XAPI is a
+ * static library (not a DLL import), so this expands to nothing; the stdcall
+ * ABI is carried by the explicit __stdcall on each prototype. */
+#define XBOXAPI
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+//========================================================================
+//  Resource sections
+//
+//  XBE sections (named regions of the executable, e.g. bundled .xpr resources)
+//  can be paged in on demand. XLoadSection maps a section by name and returns
+//  its base pointer, bumping a reference count; XFreeSection drops a reference
+//  (the section is unmapped when the count reaches zero). The *ByHandle forms
+//  cache the lookup so a hot section is not re-resolved by name each frame.
+//========================================================================
+XBOXAPI PVOID __stdcall XLoadSectionA(IN LPCSTR pSectionName);
+#define XLoadSection XLoadSectionA
+
+XBOXAPI BOOL __stdcall XFreeSectionA(IN LPCSTR pSectionName);
+#define XFreeSection XFreeSectionA
+
+XBOXAPI HANDLE __stdcall XGetSectionHandleA(IN LPCSTR pSectionName);
+#define XGetSectionHandle XGetSectionHandleA
+
+XBOXAPI PVOID __stdcall XLoadSectionByHandle(IN HANDLE hSection);
+
+XBOXAPI BOOL __stdcall XFreeSectionByHandle(HANDLE hSection);
+
+XBOXAPI DWORD __stdcall XGetSectionSize(HANDLE hSection);
+
+
+//========================================================================
+//  Display blocks
+//========================================================================
+#define MAX_DISPLAY_BLOCKS 50001
+
+XBOXAPI DWORD __stdcall XGetDisplayBlocks(IN LPCSTR lpPathName);
+
+
+//========================================================================
+//  Save games
+//========================================================================
+#define XSAVEGAME_NOCOPY 1
+
+XBOXAPI DWORD __stdcall XCreateSaveGame(IN LPCSTR lpRootPathName, IN LPCWSTR lpSaveGameName, IN DWORD dwCreationDisposition, IN DWORD dwCreateFlags, OUT LPSTR lpPathBuffer, IN UINT uSize);
+
+XBOXAPI DWORD __stdcall XDeleteSaveGame(IN LPCSTR lpRootPathName, IN LPCWSTR lpSaveGameName);
+
+#define MAX_GAMENAME 128
+
+typedef struct _XGAME_FIND_DATA {
+    WIN32_FIND_DATAA wfd;
+    CHAR szSaveGameDirectory[MAX_PATH];
+    WCHAR szSaveGameName[MAX_GAMENAME];
+} XGAME_FIND_DATA, *PXGAME_FIND_DATA;
+
+XBOXAPI HANDLE __stdcall XFindFirstSaveGame(IN LPCSTR lpRootPathName, OUT PXGAME_FIND_DATA pFindGameData);
+
+XBOXAPI BOOL __stdcall XFindNextSaveGame(IN HANDLE hFindGame, OUT PXGAME_FIND_DATA pFindGameData);
+
+XBOXAPI BOOL __stdcall XFindClose(IN HANDLE hFind);
+
+
+//========================================================================
+//  Nicknames
+//========================================================================
+#define MAX_NICKNAME 32
+
+XBOXAPI BOOL __stdcall XSetNicknameW(IN LPCWSTR lpNickname, IN BOOL fPreserveCase);
+#define XSetNickname XSetNicknameW
+
+XBOXAPI HANDLE __stdcall XFindFirstNicknameW(IN BOOL fThisTitleOnly, OUT LPWSTR lpNickname, IN UINT uSize);
+#define XFindFirstNickname XFindFirstNicknameW
+
+XBOXAPI BOOL __stdcall XFindNextNicknameW(IN HANDLE hFindNickname, OUT LPWSTR lpNickname, IN UINT uSize);
+#define XFindNextNickname XFindNextNicknameW
+
+
+//========================================================================
+//  Content and offerings
+//========================================================================
+typedef ULONGLONG XOFFERING_ID;
+
+#define MAX_CONTENT_DISPLAY_NAME 128
+
+typedef struct _XCONTENT_FIND_DATA {
+    WIN32_FIND_DATAA wfd;
+    XOFFERING_ID qwOfferingId;
+    DWORD dwFlags;
+    CHAR szContentDirectory[MAX_PATH];
+    WCHAR szDisplayName[MAX_CONTENT_DISPLAY_NAME];
+} XCONTENT_FIND_DATA, *PXCONTENT_FIND_DATA;
+
+XBOXAPI HANDLE __stdcall XFindFirstContent(IN LPCSTR lpRootPathName, IN DWORD dwFlagFilter, OUT PXCONTENT_FIND_DATA pFindContentData);
+
+XBOXAPI BOOL __stdcall XFindNextContent(IN HANDLE hFindContent, OUT PXCONTENT_FIND_DATA pFindContentData);
+
+XBOXAPI BOOL __stdcall XGetContentInstallLocation(IN DWORD dwTitleID, IN LPCSTR lpSourceMetadataFileName, OUT LPSTR lpInstallDirectory);
+
+XBOXAPI BOOL __stdcall XGetContentInstallLocationFromIDs(IN DWORD dwTitleID, IN XOFFERING_ID xOfferingID, OUT LPSTR lpInstallDirectory);
+
+XBOXAPI BOOL __stdcall XInstallContentSignatures(IN DWORD dwTitleID, IN LPCSTR lpSourceMetadataFileName, IN LPCSTR lpDestinationDirectory);
+
+XBOXAPI BOOL __stdcall XCreateContentSimple(IN DWORD dwTitleID, IN XOFFERING_ID xOfferingID, IN DWORD dwContentFlags, IN LPCWSTR lpContentName, IN LPCSTR lpDestinationDirectory);
+
+XBOXAPI BOOL __stdcall XRemoveContent(IN LPCSTR lpDirectoryName);
+
+
+XBOXAPI HANDLE __stdcall XLoadContentSignaturesEx(IN DWORD dwTitleID, IN LPCSTR lpDirectoryName);
+
+#define XLoadContentSignatures(lpDirectoryName) \
+    XLoadContentSignaturesEx(0, lpDirectoryName)
+
+XBOXAPI BOOL __stdcall XLocateSignatureByIndex(IN HANDLE hSignature, IN DWORD dwSignatureIndex, OUT LPBYTE* ppbSignatureData, OUT LPDWORD pdwSignatureSize);
+
+XBOXAPI BOOL __stdcall XLocateSignatureByName(IN HANDLE hSignature, IN LPCSTR lpFileName, IN DWORD dwFileOffset, IN DWORD dwDataSize, OUT LPBYTE* ppbSignatureData, OUT LPDWORD pdwSignatureSize);
+
+XBOXAPI BOOL __stdcall XCalculateContentSignature(IN LPBYTE pbData, IN DWORD dwDataSize, OUT LPBYTE pbSignature, IN OUT LPDWORD pdwSignatureSize);
+
+XBOXAPI VOID __stdcall XCloseContentSignatures(IN HANDLE hSignature);
+
+
+//========================================================================
+//  Soundtracks
+//========================================================================
+#define MAX_SONG_NAME 32
+#define MAX_SOUNDTRACK_NAME 32
+#define MAX_SOUNDTRACKS 100
+#define MAX_SONGS_IN_SNDTRK 500
+
+typedef struct _XSOUNDTRACK_DATA {
+    UINT uSoundtrackId;
+    UINT uSongCount;
+    UINT uSoundtrackLength;
+    WCHAR szName[MAX_SOUNDTRACK_NAME];
+} XSOUNDTRACK_DATA, *PXSOUNDTRACK_DATA;
+
+XBOXAPI HANDLE __stdcall XFindFirstSoundtrack(OUT PXSOUNDTRACK_DATA pSoundtrackData);
+
+XBOXAPI BOOL __stdcall XFindNextSoundtrack(IN HANDLE hFindHandle, OUT PXSOUNDTRACK_DATA pSoundtrackData);
+
+XBOXAPI HANDLE __stdcall XOpenSoundtrackSong(IN DWORD dwSongId, IN BOOL fAsyncMode);
+
+XBOXAPI BOOL __stdcall XGetSoundtrackSongInfo(IN DWORD dwSoundtrackId, IN UINT uIndex, OUT PDWORD pdwSongId, OUT PDWORD pdwSongLength, OUT OPTIONAL PWSTR szNameBuffer, IN UINT uBufferSize);
+
+XBOXAPI DWORD __stdcall XAddSoundtrack(IN LPCWSTR pszSoundtrackName, OUT PUINT pdwSoundtrackId);
+
+typedef DWORD(__stdcall * LP_SOUNDTRACK_PROGRESS_ROUTINE)(
+    IN PCWSTR pszSoundtrackName,
+    IN PCWSTR pszSongName,
+    IN LARGE_INTEGER TotalFileSize,
+    IN LARGE_INTEGER TotalBytesTransferred,
+    IN LPVOID Context OPTIONAL);
+
+XBOXAPI HRESULT __stdcall XAddSongToSoundtrack(IN UINT dwSoundtrackId, IN LPCSTR pszSongPath, IN LPCWSTR pszSongName OPTIONAL, IN LP_SOUNDTRACK_PROGRESS_ROUTINE lpRoutine OPTIONAL, IN LPVOID Context OPTIONAL, OUT PUINT pdwSongId OPTIONAL);
+
+
+//========================================================================
+//  Configuration settings (XGetXConfig)
+//
+//  Read-only accessors for the console's persisted settings (dashboard /
+//  EEPROM): UI language, auto-logon, the attached AV pack, video standard and
+//  video/audio capability flags, parental-control level and game region. Each
+//  returns the raw setting value; the XC_* constants below name the values.
+//========================================================================
+#define XC_LANGUAGE_ENGLISH 1
+#define XC_LANGUAGE_JAPANESE 2
+#define XC_LANGUAGE_GERMAN 3
+#define XC_LANGUAGE_FRENCH 4
+#define XC_LANGUAGE_SPANISH 5
+#define XC_LANGUAGE_ITALIAN 6
+#define XC_LANGUAGE_KOREAN 7
+#define XC_LANGUAGE_TCHINESE 8
+#define XC_LANGUAGE_PORTUGUESE 9
+
+
+XBOXAPI DWORD __stdcall XGetLanguage(VOID);
+
+
+#define XC_AUTO_LOGON_ALLOWED 1
+#define XC_AUTO_LOGON_NOT_ALLOWED 2
+
+XBOXAPI DWORD __stdcall XGetAutoLogonFlag(VOID);
+
+
+#define XC_AV_PACK_SCART 0
+#define XC_AV_PACK_HDTV 1
+#define XC_AV_PACK_VGA 2
+#define XC_AV_PACK_RFU 3
+#define XC_AV_PACK_SVIDEO 4
+#define XC_AV_PACK_STANDARD 6
+
+XBOXAPI DWORD __stdcall XGetAVPack(VOID);
+
+#define XC_VIDEO_STANDARD_NTSC_M 1
+#define XC_VIDEO_STANDARD_NTSC_J 2
+#define XC_VIDEO_STANDARD_PAL_I 3
+
+XBOXAPI DWORD __stdcall XGetVideoStandard(VOID);
+
+#define XC_VIDEO_FLAGS_WIDESCREEN 0x00000001
+#define XC_VIDEO_FLAGS_HDTV_720p 0x00000002
+#define XC_VIDEO_FLAGS_HDTV_1080i 0x00000004
+#define XC_VIDEO_FLAGS_HDTV_480p 0x00000008
+#define XC_VIDEO_FLAGS_LETTERBOX 0x00000010
+#define XC_VIDEO_FLAGS_PAL_60Hz 0x00000040
+
+XBOXAPI DWORD __stdcall XGetVideoFlags(VOID);
+
+#define XC_AUDIO_FLAGS_STEREO 0x00000000
+#define XC_AUDIO_FLAGS_MONO 0x00000001
+#define XC_AUDIO_FLAGS_SURROUND 0x00000002
+#define XC_AUDIO_FLAGS_ENABLE_AC3 0x00010000
+#define XC_AUDIO_FLAGS_ENABLE_DTS 0x00020000
+
+#define XC_AUDIO_FLAGS_BASICMASK 0x0000FFFF
+#define XC_AUDIO_FLAGS_ENCODEDMASK 0xFFFF0000
+
+#define XC_AUDIO_FLAGS_BASIC(c) ((DWORD)(c) & XC_AUDIO_FLAGS_BASICMASK)
+#define XC_AUDIO_FLAGS_ENCODED(c) ((DWORD)(c) & XC_AUDIO_FLAGS_ENCODEDMASK)
+#define XC_AUDIO_FLAGS_COMBINED(b, e) (XC_AUDIO_FLAGS_BASIC(b) | XC_AUDIO_FLAGS_ENCODED(e))
+
+XBOXAPI DWORD __stdcall XGetAudioFlags(VOID);
+
+#define XC_PC_ESRB_ALL 0
+#define XC_PC_ESRB_ADULT 1
+#define XC_PC_ESRB_MATURE 2
+#define XC_PC_ESRB_TEEN 3
+#define XC_PC_ESRB_EVERYONE 4
+#define XC_PC_ESRB_KIDS_TO_ADULTS 5
+#define XC_PC_ESRB_EARLY_CHILDHOOD 6
+
+XBOXAPI DWORD __stdcall XGetParentalControlSetting(VOID);
+
+#define XC_GAME_REGION_NA 0x00000001
+#define XC_GAME_REGION_JAPAN 0x00000002
+#define XC_GAME_REGION_RESTOFWORLD 0x00000004
+#define XC_GAME_REGION_MANUFACTURING 0x80000000
+
+XBOXAPI DWORD __stdcall XGetGameRegion(VOID);
+
+
+//========================================================================
+//  Input devices
+//========================================================================
+typedef struct _XPP_DEVICE_TYPE {
+    ULONG Reserved[3];
+} XPP_DEVICE_TYPE, *PXPP_DEVICE_TYPE;
+
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_GAMEPAD_TABLE;
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_MEMORY_UNIT_TABLE;
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_VOICE_MICROPHONE_TABLE;
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_VOICE_HEADPHONE_TABLE;
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_HIGHFIDELITY_MICROPHONE_TABLE;
+
+#define XDEVICE_TYPE_GAMEPAD (&XDEVICE_TYPE_GAMEPAD_TABLE)
+#define XDEVICE_TYPE_MEMORY_UNIT (&XDEVICE_TYPE_MEMORY_UNIT_TABLE)
+#define XDEVICE_TYPE_VOICE_MICROPHONE (&XDEVICE_TYPE_VOICE_MICROPHONE_TABLE)
+#define XDEVICE_TYPE_VOICE_HEADPHONE (&XDEVICE_TYPE_VOICE_HEADPHONE_TABLE)
+#define XDEVICE_TYPE_HIGHFIDELITY_MICROPHONE (&XDEVICE_TYPE_HIGHFIDELITY_MICROPHONE_TABLE)
+
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_DEBUG_MOUSE_TABLE;
+#define XDEVICE_TYPE_DEBUG_MOUSE (&XDEVICE_TYPE_DEBUG_MOUSE_TABLE)
+
+extern XPP_DEVICE_TYPE XDEVICE_TYPE_IR_REMOTE_TABLE;
+#define XDEVICE_TYPE_IR_REMOTE (&XDEVICE_TYPE_IR_REMOTE_TABLE)
+
+
+#define XDEVICE_PORT0 0
+#define XDEVICE_PORT1 1
+#define XDEVICE_PORT2 2
+#define XDEVICE_PORT3 3
+
+#define XDEVICE_NO_SLOT 0
+#define XDEVICE_TOP_SLOT 0
+#define XDEVICE_BOTTOM_SLOT 1
+
+#define XDEVICE_PORT0_MASK (1 << XDEVICE_PORT0)
+#define XDEVICE_PORT1_MASK (1 << XDEVICE_PORT1)
+#define XDEVICE_PORT2_MASK (1 << XDEVICE_PORT2)
+#define XDEVICE_PORT3_MASK (1 << XDEVICE_PORT3)
+#define XDEVICE_PORT0_TOP_MASK (1 << XDEVICE_PORT0)
+#define XDEVICE_PORT1_TOP_MASK (1 << XDEVICE_PORT1)
+#define XDEVICE_PORT2_TOP_MASK (1 << XDEVICE_PORT2)
+#define XDEVICE_PORT3_TOP_MASK (1 << XDEVICE_PORT3)
+#define XDEVICE_PORT0_BOTTOM_MASK (1 << (XDEVICE_PORT0 + 16))
+#define XDEVICE_PORT1_BOTTOM_MASK (1 << (XDEVICE_PORT1 + 16))
+#define XDEVICE_PORT2_BOTTOM_MASK (1 << (XDEVICE_PORT2 + 16))
+#define XDEVICE_PORT3_BOTTOM_MASK (1 << (XDEVICE_PORT3 + 16))
+
+typedef struct _XDEVICE_PREALLOC_TYPE {
+    PXPP_DEVICE_TYPE DeviceType;
+    DWORD dwPreallocCount;
+} XDEVICE_PREALLOC_TYPE, *PXDEVICE_PREALLOC_TYPE;
+
+#define XGetPortCount() 4
+
+
+// Initialize the input subsystem. Call once at startup, passing the device
+// types the title will use and how many objects to pre-allocate for each (so
+// later opens never allocate). DeviceType tables are the XDEVICE_TYPE_* macros.
+XBOXAPI VOID __stdcall XInitDevices(DWORD dwPreallocTypeCount, PXDEVICE_PREALLOC_TYPE PreallocTypes);
+
+// Bitmask of ports/slots currently holding a device of the given type. Bits are
+// the XDEVICE_PORTn[_TOP/_BOTTOM]_MASK values.
+XBOXAPI DWORD __stdcall XGetDevices(IN PXPP_DEVICE_TYPE DeviceType);
+
+// Poll for hot-plug changes since the last call: pdwInsertions/pdwRemovals get
+// the port masks that gained/lost a device of this type. Returns FALSE if a
+// device enumeration is still in progress (see XGetDeviceEnumerationStatus).
+XBOXAPI BOOL __stdcall XGetDeviceChanges(IN PXPP_DEVICE_TYPE DeviceType, OUT PDWORD pdwInsertions, OUT PDWORD pdwRemovals);
+
+
+#define XDEVICE_ENUMERATION_IDLE 0
+#define XDEVICE_ENUMERATION_BUSY 1
+
+XBOXAPI DWORD __stdcall XGetDeviceEnumerationStatus();
+
+
+//========================================================================
+//  XInput
+//========================================================================
+typedef struct _XINPUT_GAMEPAD {
+    WORD wButtons;
+    BYTE bAnalogButtons[8];
+    SHORT sThumbLX;
+    SHORT sThumbLY;
+    SHORT sThumbRX;
+    SHORT sThumbRY;
+} XINPUT_GAMEPAD, *PXINPUT_GAMEPAD;
+
+#define XINPUT_GAMEPAD_DPAD_UP 0x0001
+#define XINPUT_GAMEPAD_DPAD_DOWN 0x0002
+#define XINPUT_GAMEPAD_DPAD_LEFT 0x0004
+#define XINPUT_GAMEPAD_DPAD_RIGHT 0x0008
+#define XINPUT_GAMEPAD_START 0x0010
+#define XINPUT_GAMEPAD_BACK 0x0020
+#define XINPUT_GAMEPAD_LEFT_THUMB 0x0040
+#define XINPUT_GAMEPAD_RIGHT_THUMB 0x0080
+#define XINPUT_LIGHTGUN_ONSCREEN 0x2000
+#define XINPUT_LIGHTGUN_FRAME_DOUBLER 0x4000
+#define XINPUT_LIGHTGUN_LINE_DOUBLER 0x8000
+
+
+#define XINPUT_GAMEPAD_A 0
+#define XINPUT_GAMEPAD_B 1
+#define XINPUT_GAMEPAD_X 2
+#define XINPUT_GAMEPAD_Y 3
+#define XINPUT_GAMEPAD_BLACK 4
+#define XINPUT_GAMEPAD_WHITE 5
+#define XINPUT_GAMEPAD_LEFT_TRIGGER 6
+#define XINPUT_GAMEPAD_RIGHT_TRIGGER 7
+
+
+#define XINPUT_GAMEPAD_MAX_CROSSTALK 30
+
+typedef struct _XINPUT_RUMBLE {
+    WORD wLeftMotorSpeed;
+    WORD wRightMotorSpeed;
+} XINPUT_RUMBLE, *PXINPUT_RUMBLE;
+
+typedef struct _XINPUT_MOUSE {
+    BYTE bButtons;
+    char cMickeysX;
+    char cMickeysY;
+    char cWheel;
+} XINPUT_MOUSE, *PXINPUT_MOUSE;
+
+#define XINPUT_DEBUG_MOUSE_LEFT_BUTTON 0x01
+#define XINPUT_DEBUG_MOUSE_RIGHT_BUTTON 0x02
+#define XINPUT_DEBUG_MOUSE_MIDDLE_BUTTON 0x04
+#define XINPUT_DEBUG_MOUSE_XBUTTON1 0x08
+#define XINPUT_DEBUG_MOUSE_XBUTTON2 0x10
+
+typedef struct _XINPUT_STATE {
+    DWORD dwPacketNumber;
+    union {
+        XINPUT_GAMEPAD Gamepad;
+        XINPUT_MOUSE DebugMouse;
+    };
+} XINPUT_STATE, *PXINPUT_STATE;
+
+
+#define XINPUT_FEEDBACK_HEADER_INTERNAL_SIZE 58
+typedef struct _XINPUT_FEEDBACK_HEADER {
+    DWORD dwStatus;
+    HANDLE OPTIONAL hEvent;
+    BYTE Reserved[XINPUT_FEEDBACK_HEADER_INTERNAL_SIZE];
+} XINPUT_FEEDBACK_HEADER, *PXINPUT_FEEDBACK_HEADER;
+
+typedef struct _XINPUT_FEEDBACK {
+    XINPUT_FEEDBACK_HEADER Header;
+    union {
+        XINPUT_RUMBLE Rumble;
+    };
+} XINPUT_FEEDBACK, *PXINPUT_FEEDBACK;
+
+typedef struct _XINPUT_CAPABILITIES {
+    BYTE SubType;
+    WORD Reserved;
+    union {
+        XINPUT_GAMEPAD Gamepad;
+    } In;
+    union {
+        XINPUT_RUMBLE Rumble;
+    } Out;
+} XINPUT_CAPABILITIES, *PXINPUT_CAPABILITIES;
+
+#define XINPUT_DEVSUBTYPE_GC_GAMEPAD 0x01
+#define XINPUT_DEVSUBTYPE_GC_GAMEPAD_ALT 0x02
+#define XINPUT_DEVSUBTYPE_GC_WHEEL 0x10
+#define XINPUT_DEVSUBTYPE_GC_ARCADE_STICK 0x20
+#define XINPUT_DEVSUBTYPE_GC_DIGITAL_ARCADE_STICK 0x21
+#define XINPUT_DEVSUBTYPE_GC_FLIGHT_STICK 0x30
+#define XINPUT_DEVSUBTYPE_GC_SNOWBOARD 0x40
+#define XINPUT_DEVSUBTYPE_GC_LIGHTGUN 0x50
+#define XINPUT_DEVSUBTYPE_GC_RADIO_FLIGHT_CONTROL 0x60
+#define XINPUT_DEVSUBTYPE_GC_FISHING_ROD 0x70
+#define XINPUT_DEVSUBTYPE_GC_DANCEPAD 0x80
+
+typedef struct _XINPUT_POLLING_PARAMETERS {
+    BYTE fAutoPoll : 1;
+    BYTE fInterruptOut : 1;
+    BYTE ReservedMBZ1 : 6;
+    BYTE bInputInterval;
+    BYTE bOutputInterval;
+    BYTE ReservedMBZ2;
+} XINPUT_POLLING_PARAMETERS, *PXINPUT_POLLING_PARAMETERS;
+
+// Open an input device on a given port/slot and return a handle for the
+// XInput* calls. pPollingParameters is optional; NULL selects auto-polling
+// (the device state is refreshed for you, so XInputGetState never blocks).
+XBOXAPI HANDLE __stdcall XInputOpen(IN PXPP_DEVICE_TYPE DeviceType, IN DWORD dwPort, IN DWORD dwSlot, IN PXINPUT_POLLING_PARAMETERS pPollingParameters OPTIONAL);
+
+XBOXAPI VOID __stdcall XInputClose(IN HANDLE hDevice);
+
+// Copy the current input state (gamepad buttons/analog or debug-mouse deltas)
+// into pState. dwPacketNumber changes only when the state changed since the
+// last read, so a title can skip re-processing an unchanged frame. ERROR_SUCCESS
+// on success, ERROR_DEVICE_NOT_CONNECTED if the device was removed.
+XBOXAPI DWORD __stdcall XInputGetState(IN HANDLE hDevice, OUT PXINPUT_STATE pState);
+
+// Manually refresh a device opened without auto-polling. Not needed for
+// auto-polled devices.
+XBOXAPI DWORD __stdcall XInputPoll(IN HANDLE hDevice);
+
+// Send an output packet (e.g. gamepad rumble via XINPUT_FEEDBACK.Rumble). The
+// call is asynchronous; Header.dwStatus/hEvent report completion.
+XBOXAPI DWORD __stdcall XInputSetState(IN HANDLE hDevice, IN OUT PXINPUT_FEEDBACK pFeedback);
+
+// Query the device's static capabilities (subtype, and which inputs/outputs it
+// supports).
+XBOXAPI DWORD __stdcall XInputGetCapabilities(IN HANDLE hDevice, OUT PXINPUT_CAPABILITIES pCapabilities);
+
+
+typedef struct _XINPUT_DEVICE_DESCRIPTION {
+    WORD wVendorID;
+    WORD wProductID;
+    WORD wVersion;
+} XINPUT_DEVICE_DESCRIPTION, *PXINPUT_DEVICE_DESCRIPTION;
+
+XBOXAPI DWORD __stdcall XInputGetDeviceDescription(IN HANDLE hDevice, OUT PXINPUT_DEVICE_DESCRIPTION pDescription);
+
+#define XINPUT_LIGHTGUN_CALIBRATION_CENTER_X 0
+#define XINPUT_LIGHTGUN_CALIBRATION_CENTER_Y 0
+#define XINPUT_LIGHTGUN_CALIBRATION_UPPERLEFT_X -25000
+#define XINPUT_LIGHTGUN_CALIBRATION_UPPERLEFT_Y 25000
+
+typedef struct _XINPUT_LIGHTGUN_CALIBRATION_OFFSETS {
+    WORD wCenterX;
+    WORD wCenterY;
+    WORD wUpperLeftX;
+    WORD wUpperLeftY;
+} XINPUT_LIGHTGUN_CALIBRATION_OFFSETS, *PXINPUT_LIGHTGUN_CALIBRATION_OFFSETS;
+
+XBOXAPI DWORD __stdcall XInputSetLightgunCalibration(IN HANDLE hDevice, IN PXINPUT_LIGHTGUN_CALIBRATION_OFFSETS pCalibrationOffsets);
+
+// Mount the memory unit in the given port/slot and return the drive letter it
+// was mapped to in pchDrive. Pair with XUnmountMU. ERROR_SUCCESS on success.
+XBOXAPI DWORD __stdcall XMountMUA(IN DWORD dwPort, IN DWORD dwSlot, OUT PCHAR pchDrive);
+#define XMountMU XMountMUA
+
+
+XBOXAPI DWORD __stdcall XUnmountMU(IN DWORD dwPort, IN DWORD dwSlot);
+
+XBOXAPI DWORD __stdcall XMUPortFromDriveLetterA(IN CHAR chDrive);
+#define XMUPortFromDriveLetter XMUPortFromDriveLetterA
+
+XBOXAPI DWORD __stdcall XMUSlotFromDriveLetterA(IN CHAR chDrive);
+#define XMUSlotFromDriveLetter XMUSlotFromDriveLetterA
+
+
+//========================================================================
+//  Memory units
+//========================================================================
+#define MAX_MUNAME 32
+
+XBOXAPI DWORD __stdcall XMUNameFromDriveLetter(IN CHAR chDrive, OUT LPWSTR lpName, IN UINT cchName);
+
+// Low-level Memory Unit device objects (libxapi usb/mu). Port/Slot addressed.
+// (MU_CreateDeviceObject/MU_CloseDeviceObject: src/common/XboxKernel.h.)
+
+
+#define XINIT_MOUNT_UTILITY_DRIVE 0x00000001
+#define XINIT_FORMAT_UTILITY_DRIVE 0x00000002
+#define XINIT_LIMIT_DEVKIT_MEMORY 0x00000004
+#define XINIT_DONT_MODIFY_HARD_DISK 0x00000010
+
+#define XINIT_UTILITY_DRIVE_16K_CLUSTER_SIZE 0x00000000
+#define XINIT_UTILITY_DRIVE_32K_CLUSTER_SIZE 0x40000000
+#define XINIT_UTILITY_DRIVE_64K_CLUSTER_SIZE 0x80000000
+#define XINIT_UTILITY_DRIVE_128K_CLUSTER_SIZE 0xC0000000
+
+// Mount the per-title utility partition (scratch space on the hard disk, drive
+// Z:). fFormatClean formats it empty first. The XINIT_* flags above (passed via
+// XapiInitProcess) select cluster size and formatting behaviour.
+XBOXAPI BOOL __stdcall XMountUtilityDrive(IN BOOL fFormatClean);
+
+XBOXAPI BOOL __stdcall XFormatUtilityDrive(VOID);
+
+XBOXAPI BOOL __stdcall XMountSecondaryUtilityDrive(VOID);
+
+XBOXAPI BOOL __stdcall XSwapUtilityDrives(VOID);
+
+
+XBOXAPI BOOL __stdcall XFormatSecondaryUtilityDrive(VOID);
+
+
+XBOXAPI DWORD __stdcall XMountAlternateTitleA(IN LPCSTR lpRootPath, IN DWORD dwAltTitleId, OUT PCHAR pchDrive);
+#define XMountAlternateTitle XMountAlternateTitleA
+
+XBOXAPI DWORD __stdcall XUnmountAlternateTitleA(IN CHAR chDrive);
+#define XUnmountAlternateTitle XUnmountAlternateTitleA
+
+XBOXAPI DWORD __stdcall XGetDiskSectorSizeA(IN LPCSTR lpRootPathName);
+#define XGetDiskSectorSize XGetDiskSectorSizeA
+
+#define XBOX_HD_SECTOR_SIZE 512
+#define XBOX_DVD_SECTOR_SIZE 2048
+#define XBOX_MU_SECTOR_SIZE 4096
+
+XBOXAPI DWORD __stdcall XGetDiskClusterSizeA(IN LPCSTR lpRootPathName);
+#define XGetDiskClusterSize XGetDiskClusterSizeA
+
+
+//========================================================================
+//  Launch data
+//========================================================================
+#define MAX_LAUNCH_DATA_SIZE 3072
+
+typedef struct _LAUNCH_DATA {
+    BYTE Data[MAX_LAUNCH_DATA_SIZE];
+} LAUNCH_DATA, *PLAUNCH_DATA;
+
+typedef struct _LD_LAUNCH_DASHBOARD {
+    DWORD dwReason;
+    DWORD dwContext;
+    DWORD dwParameter1;
+    DWORD dwParameter2;
+    BYTE Reserved[MAX_LAUNCH_DATA_SIZE - 16];
+} LD_LAUNCH_DASHBOARD, *PLD_LAUNCH_DASHBOARD;
+
+
+#define XLD_LAUNCH_DASHBOARD_MAIN_MENU 0 // Does not return to application
+#define XLD_LAUNCH_DASHBOARD_ERROR 1 // Does not return to application
+#define XLD_LAUNCH_DASHBOARD_MEMORY 2
+#define XLD_LAUNCH_DASHBOARD_SETTINGS 3
+#define XLD_LAUNCH_DASHBOARD_MUSIC 4
+
+#define XLD_LAUNCH_DASHBOARD_NETWORK_CONFIGURATION 6
+#define XLD_LAUNCH_DASHBOARD_NEW_ACCOUNT_SIGNUP 7
+#define XLD_LAUNCH_DASHBOARD_ACCOUNT_MANAGEMENT 8
+#define XLD_LAUNCH_DASHBOARD_ONLINE_MENU 9
+#define XLD_LAUNCH_DASHBOARD_DVDPLAYER 0x100
+
+//
+// When XDash is launched with XLD_LAUNCH_DASHBOARD_ERROR,
+// LD_LAUNCH_DASHBOARD.dwParameter1 field contains one of
+// the following error codes.
+//
+#define XLD_ERROR_INVALID_XBE 1
+#define XLD_ERROR_INVALID_HARD_DISK 2
+#define XLD_ERROR_XBE_REGION 3
+#define XLD_ERROR_XBE_PARENTAL_CONTROL 4
+#define XLD_ERROR_XBE_MEDIA_TYPE 5
+
+//
+// When the dwReason is XLD_LAUNCH_DASHBOARD_SETTINGS,
+// LD_LAUNCH_DASHBOARD.dwParameter1 will have 0 or more
+// of the following flags set.
+//
+#define XLD_SETTINGS_CLOCK 0x01 // Does not return to application with context
+#define XLD_SETTINGS_TIMEZONE 0x02 // Does not return to application with context
+#define XLD_SETTINGS_LANGUAGE 0x04 // Does not return to application with context
+#define XLD_SETTINGS_VIDEO 0x08
+#define XLD_SETTINGS_AUDIO 0x10
+
+
+typedef struct _LD_FROM_DASHBOARD {
+    DWORD dwContext;
+    BYTE Reserved[MAX_LAUNCH_DATA_SIZE - 4];
+} LD_FROM_DASHBOARD, *PLD_FROM_DASHBOARD;
+
+typedef struct _LD_FROM_DEBUGGER_CMDLINE {
+    CHAR szCmdLine[MAX_LAUNCH_DATA_SIZE];
+} LD_FROM_DEBUGGER_CMDLINE, *PLD_FROM_DEBUGGER_CMDLINE;
+
+#define XLDEMO_RUNMODE_KIOSKMODE 0x01
+#define XLDEMO_RUNMODE_USERSELECTED 0x02
+
+typedef struct _LD_DEMO // Required for launching into and out of demos, data type is LDT_TITLE
+{
+    DWORD dwID;
+    DWORD dwRunmode;
+    DWORD dwTimeout;
+    CHAR szLauncherXBE[64];
+    CHAR szLaunchedXBE[64];
+    BYTE Reserved[MAX_LAUNCH_DATA_SIZE - 140];
+} LD_DEMO, *PLD_DEMO;
+
+// value of LD_DEMO.dwID
+#define LAUNCH_DATA_DEMO_ID 'CDX1'
+
+#define LD_UPDATE_FLAG_DATA_PRESENT ((DWORD)0x00000001)
+
+
+typedef struct _LD_FROM_UPDATE // Required for launching out of auto-updates, data type is LDT_FROM_UPDATE
+{
+    DWORD dwContext;
+    HRESULT hr;
+    DWORD dwFlags;
+    DWORD dwReserved[4];
+    BYTE Data[MAX_LAUNCH_DATA_SIZE - 28];
+} LD_FROM_UPDATE, *PLD_FROM_UPDATE;
+
+// Launch another XBE, ending the current title. lpImagePath names the image
+// (NULL relaunches the dashboard); pLaunchData is an optional 3 KB blob handed
+// to the next title, which reads it back with XGetLaunchInfo. Does not return
+// on success. Use the LD_* structures above to build a typed pLaunchData.
+XBOXAPI DWORD __stdcall XLaunchNewImageA(IN LPCSTR lpImagePath, IN PLAUNCH_DATA pLaunchData);
+#define XLaunchNewImage XLaunchNewImageA
+
+#define LDT_TITLE 0
+#define LDT_FROM_DASHBOARD 2
+#define LDT_FROM_DEBUGGER_CMDLINE 3
+#define LDT_FROM_UPDATE 4
+
+
+// Retrieve the launch data handed to this title by whoever launched it.
+// pdwLaunchDataType receives one of the LDT_* values naming how to interpret
+// pLaunchData. ERROR_SUCCESS if launch data was present, else ERROR_NOT_FOUND.
+XBOXAPI DWORD __stdcall XGetLaunchInfo(OUT PDWORD pdwLaunchDataType, OUT PLAUNCH_DATA pLaunchData);
+
+
+//========================================================================
+//  Thread notifications
+//========================================================================
+typedef VOID(__stdcall * XTHREAD_NOTIFY_PROC)(BOOL fCreate);
+typedef struct _XTHREAD_NOTIFICATION {
+    LIST_ENTRY ListEntry;
+    XTHREAD_NOTIFY_PROC pfnNotifyRoutine;
+} XTHREAD_NOTIFICATION, *PXTHREAD_NOTIFICATION;
+
+XBOXAPI VOID __stdcall XRegisterThreadNotifyRoutine(IN OUT PXTHREAD_NOTIFICATION pThreadNotification, IN BOOL fRegister);
+
+XBOXAPI VOID __stdcall XSetProcessQuantumLength(IN DWORD dwMilliseconds);
+
+XBOXAPI DWORD __stdcall XGetProcessQuantumLength(VOID);
+
+XBOXAPI BOOL __stdcall XSetFileCacheSize(IN SIZE_T dwCacheSize);
+
+XBOXAPI SIZE_T __stdcall XGetFileCacheSize(VOID);
+
+DWORD __stdcall XGetFilePhysicalSortKey(HANDLE hFile);
+
+XBOXAPI VOID __stdcall XSaveFloatingPointStateForDpc(VOID);
+
+XBOXAPI VOID __stdcall XRestoreFloatingPointStateForDpc(VOID);
+
+XBOXAPI LPVOID __stdcall XPhysicalAlloc(IN SIZE_T dwSize, IN ULONG_PTR ulPhysicalAddress, IN ULONG_PTR ulAlignment, IN DWORD flProtect);
+
+XBOXAPI LPVOID __stdcall XPhysicalAllocEx(IN SIZE_T dwSize, IN ULONG_PTR ulLowestAcceptableAddress, IN ULONG_PTR ulHighestAcceptableAddress, IN ULONG_PTR ulAlignment, IN DWORD flProtect);
+
+XBOXAPI SIZE_T __stdcall XPhysicalSize(IN LPVOID lpAddress);
+
+XBOXAPI VOID __stdcall XPhysicalProtect(IN LPVOID lpAddress, IN SIZE_T dwSize, IN DWORD flNewProtect);
+
+XBOXAPI VOID __stdcall XPhysicalFree(IN LPVOID lpAddress);
+
+XBOXAPI DWORD __stdcall XQueryMemoryProtect(IN LPVOID lpAddress);
+
+//
+// allocation attribute definitions for XMemAlloc and XMemFree APIs
+//
+
+#define XALLOC_MEMTYPE_HEAP 0
+#define XALLOC_MEMTYPE_PHYSICAL 1
+
+#define XALLOC_MEMPROTECT_READONLY 0
+#define XALLOC_MEMPROTECT_NOCACHE 1
+#define XALLOC_MEMPROTECT_READWRITE 2
+#define XALLOC_MEMPROTECT_WRITECOMBINE 3
+
+#define XALLOC_ALIGNMENT_DEFAULT 0x0
+#define XALLOC_ALIGNMENT_4 0x1
+#define XALLOC_ALIGNMENT_8 0x2
+#define XALLOC_ALIGNMENT_16 0x4
+
+#define XALLOC_PHYSICAL_ALIGNMENT_DEFAULT 0x0 // Default is 4K alignment
+#define XALLOC_PHYSICAL_ALIGNMENT_4K_BELOW_16M 0x1
+#define XALLOC_PHYSICAL_ALIGNMENT_4 0x2
+#define XALLOC_PHYSICAL_ALIGNMENT_8 0x3
+#define XALLOC_PHYSICAL_ALIGNMENT_16 0x4
+#define XALLOC_PHYSICAL_ALIGNMENT_32 0x5
+#define XALLOC_PHYSICAL_ALIGNMENT_64 0x6
+#define XALLOC_PHYSICAL_ALIGNMENT_128 0x7
+#define XALLOC_PHYSICAL_ALIGNMENT_256 0x8
+#define XALLOC_PHYSICAL_ALIGNMENT_512 0x9
+#define XALLOC_PHYSICAL_ALIGNMENT_1K 0xA
+#define XALLOC_PHYSICAL_ALIGNMENT_2K 0xB
+#define XALLOC_PHYSICAL_ALIGNMENT_4K 0xC
+#define XALLOC_PHYSICAL_ALIGNMENT_8K 0xD
+#define XALLOC_PHYSICAL_ALIGNMENT_16K 0xE
+#define XALLOC_PHYSICAL_ALIGNMENT_32K 0xF
+
+
+//========================================================================
+//  Memory allocation
+//========================================================================
+typedef enum _XALLOC_ALLOCATOR_IDS {
+    eXALLOCAllocatorId_GameMin = 0,
+    eXALLOCAllocatorId_GameMax = 127,
+    eXALLOCAllocatorId_MsReservedMin = 128,
+    eXALLOCAllocatorId_D3D8 = 128,
+    eXALLOCAllocatorId_D3DX8,
+    eXALLOCAllocatorId_DSOUND,
+    eXALLOCAllocatorId_XAPI,
+    eXALLOCAllocatorId_XACT,
+    eXALLOCAllocatorId_XBOXKERNEL,
+    eXALLOCAllocatorId_XBDM,
+    eXALLOCAllocatorId_XGRAPHICS,
+    eXALLOCAllocatorId_XONLINE,
+    eXALLOCAllocatorId_XVOICE,
+    eXALLOCAllocatorId_XHV,
+    eXALLOCAllocatorId_USB,
+    eXALLOCAllocatorId_XMV,
+    eXALLOCAllocatorId_SHADERCOMPILER,
+    eXALLOCAllocatorId_UIX,
+    eXALLOCAllocatorId_MsReservedMax = 191,
+    eXALLOCAllocatorId_MiddlewareReservedMin = 192,
+    eXALLOCAllocatorId_MiddlewareReservedMax = 255
+} XALLOC_ALLOCATOR_IDS;
+
+typedef struct _XALLOC_ATTRIBUTES {
+    DWORD dwObjectType : 13;
+    DWORD dwHeapTracksAttributes : 1;
+    DWORD dwMustSucceed : 1;
+    DWORD dwFixedSize : 1;
+    DWORD dwAllocatorId : 8;
+    DWORD dwAlignment : 4;
+    DWORD dwMemoryProtect : 2;
+    DWORD dwZeroInitialize : 1;
+    DWORD dwMemoryType : 1;
+} XALLOC_ATTRIBUTES, *PXALLOC_ATTRIBUTES;
+
+#define MAKE_XALLOC_ATTRIBUTES(ObjectType, \
+    HeapTracksAttributes, \
+    MustSucceed, \
+    FixedSize, \
+    AllocatorId, \
+    Alignment, \
+    MemoryProtect, \
+    ZeroInitialize, \
+    MemoryType) \
+    ((DWORD)(ObjectType | \
+        (HeapTracksAttributes << 13) | \
+        (MustSucceed << 14) | \
+        (FixedSize << 15) | \
+        (AllocatorId << 16) | \
+        (Alignment << 24) | \
+        (MemoryProtect << 28) | \
+        (ZeroInitialize << 30) | \
+        (MemoryType << 31)))
+
+#define XALLOC_IS_PHYSICAL(Attributes) ((BOOL)(Attributes & 0x80000000) != 0)
+
+// Attribute-driven allocator used by the D3D/DSound/XGraphics runtimes (and
+// available to titles): dwAllocAttributes is a MAKE_XALLOC_ATTRIBUTES() word
+// selecting heap-vs-physical memory, alignment, protection and zeroing. A title
+// can hook allocation by defining XMemAlloc/XMemFree; XMemAllocDefault is the
+// built-in implementation those hooks fall back to. Pair with XMemFree.
+XBOXAPI LPVOID __stdcall XMemAlloc(IN SIZE_T dwSize, IN DWORD dwAllocAttributes);
+
+XBOXAPI LPVOID __stdcall XMemAllocDefault(IN SIZE_T dwSize, IN DWORD dwAllocAttributes);
+
+XBOXAPI VOID __stdcall XMemFree(IN PVOID pAddress, IN DWORD dwAllocAttributes);
+
+XBOXAPI VOID __stdcall XMemFreeDefault(IN PVOID pAddress, IN DWORD dwAllocAttributes);
+
+XBOXAPI SIZE_T __stdcall XMemSize(IN PVOID pAddress, IN DWORD dwAllocAttributes);
+
+XBOXAPI SIZE_T __stdcall XMemSizeDefault(IN PVOID pAddress, IN DWORD dwAllocAttributes);
+
+XBOXAPI VOID __stdcall XSetAttributesOnHeapAlloc(PVOID pBaseAddress, DWORD dwAllocAttributes);
+
+XBOXAPI DWORD __stdcall XGetAttributesOnHeapAlloc(PVOID pBaseAddress);
+
+
+#ifdef _DEBUG
+
+#define XVER_DEVKIT 1
+#define XVER_RETAIL 2
+
+XBOXAPI DWORD __stdcall XDebugGetSystemVersionA(OUT LPSTR pszVersionString, IN UINT cchVersionString);
+#define XDebugGetSystemVersion XDebugGetSystemVersionA
+
+XBOXAPI DWORD __stdcall XDebugGetXTLVersionA(OUT LPSTR pszVersionString, IN UINT cchVersionString);
+#define XDebugGetXTLVersion XDebugGetXTLVersionA
+
+#endif // _DEBUG
+
+#define XCALCSIG_SIGNATURE_SIZE 20
+
+typedef struct {
+    BYTE Signature[XCALCSIG_SIGNATURE_SIZE];
+} XCALCSIG_SIGNATURE, *PXCALCSIG_SIGNATURE;
+
+#define XCALCSIG_FLAG_SAVE_GAME (0x00000000)
+#define XCALCSIG_FLAG_NON_ROAMABLE (0x00000001)
+#define XCALCSIG_FLAG_CONTENT (0x00000002)
+#define XCALCSIG_FLAG_DIGEST (0x00000004)
+#define XCALCSIG_FLAG_ONLINE (0x00000008)
+
+XBOXAPI DWORD __stdcall XCalculateSignatureGetSize(IN DWORD dwFlags);
+
+XBOXAPI HANDLE __stdcall XCalculateSignatureBegin(IN DWORD dwFlags);
+
+XBOXAPI HANDLE __stdcall XCalculateSignatureBeginEx(IN DWORD dwFlags, IN DWORD dwAltTitleId);
+
+XBOXAPI DWORD __stdcall XCalculateSignatureUpdate(IN HANDLE hCalcSig, IN const BYTE* pbData, IN ULONG cbData);
+
+XBOXAPI DWORD __stdcall XCalculateSignatureEnd(IN HANDLE hCalcSig, OUT PVOID pSignature);
+
+XBOXAPI ULONG __stdcall XAutoPowerDownTimeRemaining();
+
+
+#define STATS_OFFLINE_LOCALUSERNAME_MAX_LENGTH MAX_NICKNAME
+
+
+//========================================================================
+//  Offline statistics
+//========================================================================
+typedef enum _XOFFLINE_STAT_TYPE {
+    XOFFLINE_STAT_NONE,
+    XOFFLINE_STAT_LONG,
+    XOFFLINE_STAT_LONGLONG,
+    XOFFLINE_STAT_DOUBLE,
+} XOFFLINE_STAT_TYPE;
+
+
+XBOXAPI DWORD __stdcall XWriteStatStore(IN LPCWSTR lpLocalUserName, IN DWORD dwLeaderBoardIndex, IN WORD wAttributeIndex, XOFFLINE_STAT_TYPE Type, VOID* pStatValue);
+
+XBOXAPI DWORD __stdcall XClearStatStore(IN LPCWSTR lpLocalUserName);
+
+
+//========================================================================
+//  FATX volume format + on-disk volume metadata (libxapi k32/format.c)
+//========================================================================
+#ifndef _FAT_VOLUME_METADATA_DEFINED
+#define _FAT_VOLUME_METADATA_DEFINED
+#define FAT_VOLUME_NAME_LENGTH 32
+#define FAT_ONLINE_DATA_LENGTH 2048
+
+typedef struct _FAT_VOLUME_METADATA {
+    ULONG Signature;
+    ULONG SerialNumber;
+    ULONG SectorsPerCluster;
+    ULONG RootDirFirstCluster;
+    WCHAR VolumeName[FAT_VOLUME_NAME_LENGTH];
+    UCHAR OnlineData[FAT_ONLINE_DATA_LENGTH];
+    // Unused space in the block is filled with 0xFF bytes.
+} FAT_VOLUME_METADATA, *PFAT_VOLUME_METADATA;
+#endif
+
+
+
+#ifdef __cplusplus
+}
+#endif

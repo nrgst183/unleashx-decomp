@@ -38,7 +38,7 @@ enum
 CSlideShow::CSlideShow(const char *path)
 {
 	Reset();
-	m_strPath = _strdup(path);   // (never freed)
+	m_strPath = path;   // (fix: no leaked _strdup copy)
 	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0x4000, ListThread, this, 0, NULL);
 	if (thread == NULL || thread == INVALID_HANDLE_VALUE)
 	{

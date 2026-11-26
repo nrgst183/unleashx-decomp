@@ -83,7 +83,7 @@ void ParseSkinRect(SSkinRect *rect, CXmlElement *element)
 // 0x000F9A08
 // The standard font names (case-insensitive) come from the global table;
 // anything else from the skin's own <Fonts>.
-HRESULT CSkin::FindFont(const char *name, CXBFont **font)
+HRESULT CSkin::FindFont(const char *name, CXBFont **font, BOOL namedOnly)
 {
 	if (font == NULL)
 		return E_FAIL;
@@ -106,6 +106,11 @@ HRESULT CSkin::FindFont(const char *name, CXBFont **font)
 		return g_fonts.Find(standard, font);
 	if (m_pFonts == NULL)
 		return E_FAIL;
+	if (namedOnly)
+	{
+		*font = m_pFonts->FindNamed(name);
+		return *font != NULL ? S_OK : E_FAIL;
+	}
 	return m_pFonts->Find(name, font);
 }
 
@@ -586,7 +591,7 @@ static SSkinImage MakeSkinImage(IDirect3DTexture8 *texture, int left, int top, i
 	if (texture != NULL)
 		image.texture = texture;
 	else if (source == IMAGE_FILE && fileName != NULL)
-		strcpy(image.fileName, fileName);
+		strncpy(image.fileName, fileName, sizeof(image.fileName) - 1);   // (fix: was strcpy of a skin.xml path)
 
 	image.top = top;
 	image.left = left;
@@ -847,19 +852,22 @@ static void ParseMenu(CSkin *skin, CXmlElement *menu)
 		value = fontElement->GetValue();
 		if (value.size() != 0)
 		{
-			skin->FindFont(value.c_str(), (CXBFont **)&skin->m_pMenuFont);
+			// (Fix: named fonts only. For a file name the table makes a
+			// plain CXBFont, which the menu then used as the larger
+			// CXBFontEx; now that falls through to the CXBFontEx below.)
+			skin->FindFont(value.c_str(), (CXBFont **)&skin->m_pMenuFont, TRUE);
 			if (skin->m_pMenuFont == NULL)
 			{
 				skin->m_pMenuFont = new CXBFontEx();
 				if (skin->m_pMenuFont != NULL)
 				{
 					value = skin->ResolveFile(value.c_str());
-					wchar_t wideName[0x104];
+					wchar_t wideName[0x105] = { 0 };   // (fix: was unterminated for long paths)
 					int size = 0;
 					BOOL isTTF = StrCmpNoCase(StrRight(value, 3), "ttf") == 0;
 					if (isTTF)
 					{
-						MultiByteToWideChar(CP_ACP, 0, value.c_str(), (int)value.size() + 1, wideName, 0x104);
+						MultiByteToWideChar(CP_ACP, 0, value.c_str(), value.size() < 0x104 ? (int)value.size() : 0x104, wideName, 0x104);
 						size = atol(fontElement->GetAttribute("Height").c_str());
 						if (size == 0)
 						{
@@ -1073,20 +1081,23 @@ BOOL CSkin::Parse(CXmlDocument *doc)
 	element = doc->FindElement(NULL, "Information");
 	doc->m_pCurrent = &doc->m_root;
 	value = doc->m_root.GetAttribute("Name");
-	MultiByteToWideChar(CP_ACP, 0, value.c_str(), (int)value.size() + 1, m_szName, 0x50);
+	memset(m_szName, 0, sizeof(m_szName));   // (fix: terminated, cut to 0x4F)
+	MultiByteToWideChar(CP_ACP, 0, value.c_str(), value.size() < 0x4F ? (int)value.size() : 0x4F, m_szName, 0x4F);
 	if (element != NULL)
 	{
 		CXmlElement *child = element->FindFirstChild("Author");
 		if (child != NULL)
 		{
 			value = child->GetValue();
-			MultiByteToWideChar(CP_ACP, 0, value.c_str(), (int)value.size() + 1, m_szAuthor, 0x50);
+			memset(m_szAuthor, 0, sizeof(m_szAuthor));   // (fix: terminated, cut to 0x4F)
+			MultiByteToWideChar(CP_ACP, 0, value.c_str(), value.size() < 0x4F ? (int)value.size() : 0x4F, m_szAuthor, 0x4F);
 		}
 		child = element->FindFirstChild("Version");
 		if (child != NULL)
 		{
 			value = child->GetValue();
-			MultiByteToWideChar(CP_ACP, 0, value.c_str(), (int)value.size() + 1, m_szVersion, 0x50);
+			memset(m_szVersion, 0, sizeof(m_szVersion));   // (fix: terminated, cut to 0x4F)
+			MultiByteToWideChar(CP_ACP, 0, value.c_str(), value.size() < 0x4F ? (int)value.size() : 0x4F, m_szVersion, 0x4F);
 		}
 	}
 

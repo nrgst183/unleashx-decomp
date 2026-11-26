@@ -64,8 +64,19 @@ SDriveInfo *GetDriveInfo(char drive)
 	return NULL;
 }
 
+// A device path into a drive slot's 30-byte field. (Fix: T: and U: are
+// longer, "\\Device\\Harddisk0\\Partition1\\TDATA\\", and the original wrote
+// them there whole, over the slot's type; the kernel calls now take the
+// full path from a local and the slot keeps what fits.)
+static void SetSlotDevicePath(SDriveInfo *info, const char *devicePath)
+{
+	strncpy(info->devicePath, devicePath, sizeof(info->devicePath) - 1);
+	info->devicePath[sizeof(info->devicePath) - 1] = '\0';
+}
+
 // 0x000AA512
-// Device path and symbolic link name for the fixed letters.
+// Device path and symbolic link name for the fixed letters. (devicePath
+// takes up to 40 bytes.)
 static BOOL GetDriveLinkInfo(char drive, char *devicePath, char *linkName)
 {
 	const char *device;
@@ -131,8 +142,10 @@ BOOL UnmountDrive(char drive)
 	{
 		if (!info->mounted)
 			return TRUE;
-		if (!GetDriveLinkInfo(drive, info->devicePath, info->linkName))
+		char devicePath[64];
+		if (!GetDriveLinkInfo(drive, devicePath, info->linkName))
 			return FALSE;
+		SetSlotDevicePath(info, devicePath);
 		ANSI_STRING link;
 		InitAnsiString(link, info->linkName);
 		if (IoDeleteSymbolicLink(&link) != 0)
@@ -172,11 +185,13 @@ BOOL MountDrive(char drive)
 			return FALSE;
 	}
 
-	if (!GetDriveLinkInfo(drive, info->devicePath, info->linkName))
+	char devicePath[64];
+	if (!GetDriveLinkInfo(drive, devicePath, info->linkName))
 		return FALSE;
+	SetSlotDevicePath(info, devicePath);
 
 	ANSI_STRING device, link;
-	InitAnsiString(device, info->devicePath);
+	InitAnsiString(device, devicePath);
 	InitAnsiString(link, info->linkName);
 	IoDeleteSymbolicLink(&link);
 	if (IoCreateSymbolicLink(&link, &device) != 0)
@@ -189,15 +204,16 @@ BOOL MountDrive(char drive)
 	sprintf(root, "%c", drive);
 	strcat(root, ":\\");
 	char fileSystem[10] = { 0 };
-	info->volumeSerial = 0;
-	info->maxComponentLength = 0;
-	GetVolumeInformationA(root, NULL, 0, &info->volumeSerial, &info->maxComponentLength, NULL, fileSystem,
-	                      sizeof(fileSystem));
+	// (Through locals: the packed slot's DWORDs are misaligned.)
+	DWORD volumeSerial = 0, maxComponentLength = 0;
+	GetVolumeInformationA(root, NULL, 0, &volumeSerial, &maxComponentLength, NULL, fileSystem, sizeof(fileSystem));
+	info->volumeSerial = volumeSerial;
+	info->maxComponentLength = maxComponentLength;
 	memset(info->fileSystem, 0, sizeof(info->fileSystem));
 	if (fileSystem[0] != 0)
 		strcpy(info->fileSystem, fileSystem);
 
-	GetDiskSpace(drive, &info->totalBytes, &info->freeBytes, &info->usedBytes, 1);
+	GetDiskSpace(drive, info, 1);
 	if (info->totalBytes == 0 && (drive == 'X' || drive == 'Y' || drive == 'Z'))
 	{
 		// An unformatted cache partition: format it.
@@ -233,9 +249,10 @@ BOOL MapFolderToDrive(SDriveInfo *info, char drive, const char *folder)
 	case 'Z': partition = "\\Device\\Harddisk0\\Partition5"; break;
 	default: return FALSE;
 	}
-	char device[100];
-	sprintf(device, "%s", partition);
-	strcat(device, folder + 2);   // the folder without its "X:"
+	// (Fix: was 100 bytes, which a save folder's path can pass.)
+	char device[0x200];
+	snprintf(device, sizeof(device) - 1, "%s%s", partition, folder + 2);   // the folder without its "X:"
+	device[sizeof(device) - 1] = '\0';
 
 	ANSI_STRING deviceName, linkName;
 	InitAnsiString(deviceName, device);
@@ -248,10 +265,13 @@ BOOL MapFolderToDrive(SDriveInfo *info, char drive, const char *folder)
 	info->type = DRIVE_HDD;
 	info->letter = drive;
 	info->mounted = TRUE;
-	strcpy(info->devicePath, device);
+	// (Fix: the original strcpy'd the whole device path into the 30-byte
+	// field, which a UDATA folder's always overran, into type and the sizes.)
+	strncpy(info->devicePath, device, sizeof(info->devicePath) - 1);
+	info->devicePath[sizeof(info->devicePath) - 1] = '\0';
 	strcpy(info->linkName, link);
 	info->hasMedia = TRUE;
-	GetDiskSpace(drive, &info->totalBytes, &info->freeBytes, &info->usedBytes, 1);
+	GetDiskSpace(drive, info, 1);
 	return TRUE;
 }
 
@@ -274,17 +294,18 @@ void MountAllDrives()
 			continue;
 
 		char device[0x29] = { 0 };
-		// Quirk: the letter is passed where a pointer to the drive name
-		// belongs (the device would be read from address 0x5A).
-		if (GetUtilityDriveDevice((const char *)'Z', device) < 0)
+		// (Fix: the original passed the letter where a pointer to the drive
+		// name belongs, so it read address 0x5A and faulted.)
+		if (GetUtilityDriveDevice("Z:", device) < 0)
 			continue;
 		slot->letter = 'Z';
 		slot->linkName[0] = 0;
-		strcpy(slot->devicePath, device);
+		strncpy(slot->devicePath, device, sizeof(slot->devicePath) - 1);   // (fix: was strcpy of up to 0x28)
+		slot->devicePath[sizeof(slot->devicePath) - 1] = '\0';
 		slot->mounted = TRUE;
 		slot->hasMedia = TRUE;
 		strcpy(slot->linkName, "\\??\\Z:");
-		GetDiskSpace('Z', &slot->totalBytes, &slot->freeBytes, &slot->usedBytes, 1);
+		GetDiskSpace('Z', slot, 1);
 	}
 }
 

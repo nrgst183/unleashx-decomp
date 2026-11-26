@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cwchar>
 
+#include "../common/FrameTime.h"
 #include "../audio/MusicManager.h"
 #include "../common/FileUtil.h"
 #include "../common/StrUtil.h"
@@ -116,7 +117,7 @@ void ShowLaunchScreen(const char *path, const char *name)
 		// The picture fades in over black (A or START cuts it short).
 		int step = 0;
 		Sleep(5);
-		DWORD lastStep = 0;
+		DWORD start = GetTickCount();
 		do
 		{
 			g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0xFF000000, 1.0f, 0);
@@ -130,11 +131,9 @@ void ShowLaunchScreen(const char *path, const char *name)
 			g_pd3dDevice->Swap(0);
 			if (action == INPUT_A || action == INPUT_START)
 				break;
-			if (GetTickCount() - lastStep > LAUNCH_FADE_STEP_MS)
-			{
-				step++;
-				lastStep = GetTickCount();
-			}
+			// (Fix: by time, as long as it took at 60 fps (a step every
+			// second frame), and smooth at any frame rate.)
+			step = (int)((float)(GetTickCount() - start) / FrameInterval(LAUNCH_FADE_STEP_MS));
 		} while (step < LAUNCH_FADE_STEPS);
 		g_pd3dDevice->SetSoftDisplayFilter(g_pSettings->m_video.m_bSoften);
 		if (g_pSettings->m_viewport.Width <= 640)

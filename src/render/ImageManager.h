@@ -18,8 +18,8 @@ public:
 	virtual ~CImageManager();                             // 0x0013A58E
 
 	// The texture of path, loaded at width x height (0 = the file's size)
-	// on first use. Quirk: the first caller gets the cache's own reference;
-	// later ones get one added. (this in ecx)
+	// on first use. The caller gets a reference of its own to release (fix:
+	// the original gave the first caller the cache's). (this in ecx)
 	IDirect3DTexture8 *Load(const char *path, UINT width, UINT height);   // 0x0013A38E
 	// The cached texture of path, or NULL; no reference added. (this in
 	// eax) Unused.

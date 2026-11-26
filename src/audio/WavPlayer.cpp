@@ -184,7 +184,7 @@ HRESULT CWAVPlayer::Open(const char *file)
 	int slash = StrReverseFind(name, "\\", -1);
 	if (slash != -1)
 		name = StrMid(name, slash + 1, (int)name.size() - (slash + 1));
-	StrUtf8ToWide(name.c_str(), m_szTitle, 0x40);
+	StrUtf8ToWide(name.c_str(), m_szTitle, 0x40 - 1);   // (fix: the size excludes the terminator)
 	m_dwLength = (DWORD)(int)m_pBuffer->GetDuration();
 	m_format.bitRate = m_wfx.nAvgBytesPerSec;
 	m_format.channels = m_wfx.nChannels;

@@ -22,6 +22,9 @@
 #define XBE_MIN_IMAGE_FILE 0x2800
 // The section headers are looked for in the first 256 KB.
 #define XBE_HEADER_READ 0x40000
+// Read first, for the size of the headers.
+#define XBE_HEADER_FIRST_READ 0x1000
+#define XBE_SIZE_OF_HEADERS 0x108
 
 // An XBE section header. 0x38 bytes.
 struct SXbeSectionHeader
@@ -46,6 +49,7 @@ struct SXbeHeaders
 	DWORD base;
 	DWORD count;
 	const SXbeSectionHeader *sections;
+	DWORD read;                  // the bytes of data that were read
 };
 
 // FALSE when the file is too small (when its size can be read at all),
@@ -64,27 +68,76 @@ static BOOL ReadXbeHeaders(HANDLE file, SXbeHeaders *xbe)
 			return FALSE;
 	}
 	SetFilePointer(file, 0, NULL, FILE_BEGIN);
-	xbe->data = (BYTE *)malloc(XBE_HEADER_READ);
-	if (xbe->data == NULL)
-		return FALSE;
 	DWORD read = 0;
 	DWORD toRead = (int)fileSize < XBE_HEADER_READ + 1 ? fileSize : XBE_HEADER_READ;
-	if (ReadFile(file, xbe->data, toRead, &read, NULL) != TRUE)
+	// (Only the XBE's headers (its size of headers, at 0x108) are read, not
+	// 256 KB: menu icons are now read from the XBEs themselves. The buffer
+	// is that size too, not 256 KB for every icon.)
+	DWORD first = toRead < XBE_HEADER_FIRST_READ ? toRead : XBE_HEADER_FIRST_READ;
+	xbe->data = (BYTE *)malloc(first);
+	if (xbe->data == NULL)
+		return FALSE;
+	if (ReadFile(file, xbe->data, first, &read, NULL) != TRUE)
+		return FALSE;
+	if (read == first && read >= XBE_SIZE_OF_HEADERS + 4)
+	{
+		DWORD headersSize = *(DWORD *)(xbe->data + XBE_SIZE_OF_HEADERS);
+		if (headersSize < toRead)
+			toRead = headersSize;
+		if (toRead > read)
+		{
+			BYTE *bigger = (BYTE *)realloc(xbe->data, toRead);
+			if (bigger == NULL)
+				return FALSE;
+			xbe->data = bigger;
+			DWORD more = 0;
+			if (ReadFile(file, xbe->data + read, toRead - read, &more, NULL) != TRUE)
+				return FALSE;
+			read += more;
+		}
+	}
+	xbe->read = read;
+	if (read < XBE_SECTION_HEADERS + 4)
 		return FALSE;
 	xbe->base = *(DWORD *)(xbe->data + XBE_BASE_ADDRESS);
 	xbe->count = *(DWORD *)(xbe->data + XBE_SECTION_COUNT);
 	DWORD headers = *(DWORD *)(xbe->data + XBE_SECTION_HEADERS);
 	if (xbe->count == 0 || headers == 0 || headers > fileSize)
 		return FALSE;
-	xbe->sections = (const SXbeSectionHeader *)(xbe->data + (headers - xbe->base));
+	// (Fix: the original didn't check that the section headers are within
+	// what was read, so a bad XBE sent it reading anywhere.)
+	DWORD offset = headers - xbe->base;
+	if (headers < xbe->base || offset > read || xbe->count > (read - offset) / sizeof(SXbeSectionHeader))
+		return FALSE;
+	xbe->sections = (const SXbeSectionHeader *)(xbe->data + offset);
 	return TRUE;
 }
 
-// (The name's address isn't checked against what was read.)
+// (Fix: the name's address is now checked against what was read.)
 static BOOL IsTitleImageSection(const SXbeHeaders &xbe, const SXbeSectionHeader &section)
 {
-	return memcmp(xbe.data + (section.nameAddress - xbe.base), "$$XTIMAGE", 10) == 0;
+	DWORD offset = section.nameAddress - xbe.base;
+	if (section.nameAddress < xbe.base || offset > xbe.read || xbe.read - offset < 10)
+		return FALSE;
+	return memcmp(xbe.data + offset, "$$XTIMAGE", 10) == 0;
 }
+
+// The size of an XPR's texture data, when it fits the texture made for it.
+// (Fix: the original read the header's size into the texture unchecked.)
+static BOOL XprDataFits(const SXbxHeader &header, IDirect3DTexture8 *texture, const D3DLOCKED_RECT &locked,
+                        DWORD *size)
+{
+	D3DSURFACE_DESC level;
+	if (locked.pBits == NULL || header.totalSize < header.headerSize || FAILED(texture->GetLevelDesc(0, &level)))
+		return FALSE;
+	*size = header.totalSize - header.headerSize;
+	if (*size > level.Size)
+		*size = level.Size;   // padding or mipmaps past the first level stay unread
+	return TRUE;
+}
+
+// A DDS title image larger than this isn't one (and rawSize + 0x800 can't wrap).
+#define XBE_DDS_MAX_SIZE 0x400000
 
 // The XPR header at the section's start; FALSE when it isn't one.
 static BOOL ReadXprHeader(HANDLE file, SXbxHeader *header)
@@ -139,11 +192,13 @@ BOOL LoadXbeIcon(const char *xbePath, IDirect3DTexture8 **texture)
 			if (FAILED(g_pd3dDevice->CreateTexture(desc.Width, desc.Height, 1, 0, desc.Format, 0, texture)))
 				break;
 			D3DLOCKED_RECT locked;
+			locked.pBits = NULL;
 			(*texture)->LockRect(0, &locked, NULL, D3DLOCK_READONLY);
 			SetFilePointer(file, section.rawAddress + 0x800, NULL, FILE_BEGIN);
-			DWORD size = header.totalSize - header.headerSize;
+			DWORD size = 0;
 			DWORD count = 0;
-			if (ReadFile(file, locked.pBits, size, &count, NULL) && count == size)
+			if (XprDataFits(header, *texture, locked, &size) && ReadFile(file, locked.pBits, size, &count, NULL) &&
+			    count == size)
 			{
 				result = TRUE;
 				break;
@@ -151,7 +206,7 @@ BOOL LoadXbeIcon(const char *xbePath, IDirect3DTexture8 **texture)
 			// Quirk: the texture stays in *texture (unreleased, and
 			// overwritten by a later section) and the search goes on.
 		}
-		else if (header.magic == XBE_DDS_MAGIC)
+		else if (header.magic == XBE_DDS_MAGIC && section.rawSize != 0 && section.rawSize <= XBE_DDS_MAX_SIZE)
 		{
 			// A DDS file, loaded from memory.
 			if (SetFilePointer(file, section.rawAddress, NULL, FILE_BEGIN) != INVALID_SET_FILE_POINTER)
@@ -253,18 +308,21 @@ BOOL ExtractXbeTitleImage(const char *xbePath, const char *outFile)
 				if (FAILED(g_pd3dDevice->CreateTexture(desc.Width, desc.Height, 1, 0, desc.Format, 0, &texture)))
 					break;
 				D3DLOCKED_RECT locked;
+				locked.pBits = NULL;
 				texture->LockRect(0, &locked, NULL, D3DLOCK_READONLY);
 				SetFilePointer(file, section.rawAddress + 0x800, NULL, FILE_BEGIN);
-				DWORD size = header.totalSize - header.headerSize;
+				DWORD size = 0;
 				DWORD count = 0;
 				// Quirk: a short read leaks the texture.
-				if (ReadFile(file, locked.pBits, size, &count, NULL) && count == size)
+				if (XprDataFits(header, texture, locked, &size) && ReadFile(file, locked.pBits, size, &count, NULL) &&
+				    count == size)
 				{
 					result = SaveTextureToXpr(outFile, texture);
 					texture->Release();
 				}
 			}
-			else if (header.magic == XBE_DDS_MAGIC && !FileExists(outFile) &&
+			else if (header.magic == XBE_DDS_MAGIC && section.rawSize != 0 && section.rawSize <= XBE_DDS_MAX_SIZE &&
+			         !FileExists(outFile) &&
 			         SetFilePointer(file, section.rawAddress, NULL, FILE_BEGIN) != INVALID_SET_FILE_POINTER)
 			{
 				// A DDS: copied out as it is, kept only if D3DX can load it.

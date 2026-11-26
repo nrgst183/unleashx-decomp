@@ -354,13 +354,18 @@ HRESULT CXboxInfo::Init(CXBFont *font)
 // 0x000BEC78
 void CXboxInfo::Show()
 {
+	Layout();
+	m_bClosed = FALSE;
+	m_nSelected = 0;
+}
+
+void CXboxInfo::Layout()
+{
 	m_fY = 10.0f;
 	m_fX = 20.0f;
 	m_fWidth = 600.0f;
 	m_fHeight = 460.0f;
 	ScaleToScreen(&m_fX, &m_fWidth, &m_fY, &m_fHeight, TRUE);
-	m_bClosed = FALSE;
-	m_nSelected = 0;
 }
 
 // 0x000D2200

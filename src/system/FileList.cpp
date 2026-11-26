@@ -26,13 +26,13 @@ static void CollectFolder(const char *path, std::vector<SFileListItem> *list, CD
 	StrReplaceAll(folder, "\\\\?\\", "");
 	if (StrRight(folder, 1).compare("\\") != 0)
 		folder.append("\\");
-	char pattern[0x10C];
-	strcpy(pattern, folder.c_str());
-	strcat(pattern, "*");
+	// (Fix: the original strcpy'd this into 0x10C bytes on the stack; USB
+	// and disc folders run deeper than that.)
+	std::string pattern = folder + "*";
 
 	// The files first...
 	WIN32_FIND_DATAA data;
-	HANDLE find = dir->FindFirst(pattern, &data);
+	HANDLE find = dir->FindFirst(pattern.c_str(), &data);
 	if (find != INVALID_HANDLE_VALUE)
 	{
 		do
@@ -53,7 +53,7 @@ static void CollectFolder(const char *path, std::vector<SFileListItem> *list, CD
 	}
 
 	// ...then the folders, each followed by its contents.
-	find = dir->FindFirst(pattern, &data);
+	find = dir->FindFirst(pattern.c_str(), &data);
 	if (find != INVALID_HANDLE_VALUE)
 	{
 		// A CDirectory whose search handle is always 1 keeps one search at
@@ -76,7 +76,7 @@ static void CollectFolder(const char *path, std::vector<SFileListItem> *list, CD
 				if (sharedSearch)
 				{
 					sub = data.cFileName;
-					dir->FindFirst(pattern, &data);
+					dir->FindFirst(pattern.c_str(), &data);
 					do
 					{
 						if (sub.compare(data.cFileName) == 0)

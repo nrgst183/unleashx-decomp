@@ -29,6 +29,8 @@ inline int StrCmpNoCase(const std::string &a, const char *b) { return StrCmpNoCa
 
 // sprintf into a std::string (tries buffers of 2K, 4K, ... 12K).
 std::string &StrFormat(std::string &out, const char *fmt, ...);              // 0x0001ADD6
+// sprintf into a fixed buffer, cut to fit and always terminated.
+void StrFormatBuf(char *buf, size_t size, const char *fmt, ...);
 std::string &StrFormatV(std::string &out, const char *fmt, va_list args);    // 0x00019113
 
 // Position of s in str at or after pos, or -1.                    (0x000191A9 / 0x000191C2)
@@ -65,6 +67,8 @@ BOOL IsFalseString(const char *s);
 
 // UTF-8 to wide into a buffer of size bytes, with the original's fallback
 // for text that doesn't convert cleanly.                          (0x0009DF6F)
+// Converts at most size characters and terminates after them: dst must hold
+// size + 1.
 void StrUtf8ToWide(const char *src, wchar_t *dst, unsigned int size);
 // Wide to UTF-8 into a buffer: at most size characters, then a NUL (so the
 // buffer needs size + 1 bytes). Nothing for an empty or NULL string. (src in

@@ -53,6 +53,9 @@ public:
 	// Removes the options (an inlined vector clear; the count at +0x84
 	// stays). (options in esi)
 	void ClearOptions() { m_options.clear(); }            // 0x00029AAD
+	// For a new screen size: every option menu works out again what its
+	// first Render did (a centered position, a fitted size, the page).
+	static void RelayoutAll();
 
 	// One option. 0x34 bytes.
 	struct SOption
@@ -90,6 +93,7 @@ public:
 	CXBFont *m_pFont;                                     // +0x88
 	CXBFont *m_pTitleFont;                                // +0x8C the dialog font, else m_pFont
 	BOOL m_bSlideIn;                                      // +0x90 Show sets it, the slide's end clears it
+	DWORD m_dwAutoLayout;                                 // which of x, y, width, height Render worked out (bits 0-3)
 
 private:
 	// The selected option is disabled or has no text. (this in ecx)

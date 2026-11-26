@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cwchar>
 
+#include "../common/FrameTime.h"
 #include "../common/XboxKernel.h"
 #include "../input/XBInput.h"
 
@@ -70,7 +71,22 @@ int CXBApplicationEx::Run()
 	LONGLONG appTime = 0;
 	DWORD mouseData = 0;
 	BOOL moving = FALSE;
-	memset(&g_bPointerEvent, 0, 13 * sizeof(DWORD));   // (all the pointer globals)
+	// All the pointer globals. (Fix: the original cleared them with one
+	// memset from g_bPointerEvent, as they were laid out together; a
+	// compiler is free not to, and then that wrote over other variables.)
+	g_bPointerEvent = FALSE;
+	g_nPointerPort = 0;
+	g_bPointerActive = FALSE;
+	g_bPointerClicked = FALSE;
+	g_bPointerSecondButton = FALSE;
+	g_bPointerThirdButton = FALSE;
+	g_bPointerWheelUp = FALSE;
+	g_bPointerWheelDown = FALSE;
+	g_nPointerX = 0;
+	g_nPointerY = 0;
+	g_bPointerMoved = FALSE;
+	g_bPointerDoubleClick = FALSE;
+	g_dwPointerMoveTime = 0;
 
 	for (;;)
 	{
@@ -252,6 +268,7 @@ int CXBApplicationEx::Run()
 		m_fElapsedTime = (float)elapsed * secondsPerTick;
 		m_fAppTime = (float)appTime * secondsPerTick;
 		m_fElapsedAppTime = (float)appElapsed * secondsPerTick;
+		SetFrameTime(m_fElapsedTime);   // (fix: animations by time, not frames; src/common/FrameTime.h)
 		if (sinceFPS > 1.0f)
 		{
 			m_fFPS = (float)s_dwFrames / sinceFPS;

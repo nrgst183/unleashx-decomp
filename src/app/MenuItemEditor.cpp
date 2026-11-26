@@ -262,7 +262,12 @@ BOOL CMenuItemEditor::Save()
 	BOOL isList = FALSE;
 	if (!found)
 	{
-		// Config.xml: the item under <Menu>.
+		// Config.xml: the item under <Menu>. (Fix: the items.xml document is
+		// done with; it used to stay "owned", so Save ended by deleting
+		// g_config, a global, and leaking this one.)
+		if (ownDoc)
+			delete doc;
+		ownDoc = FALSE;
 		doc = &g_config;
 		isList = StrCmpNoCase(element->m_strName, "List") == 0;
 		// The <List> texts from the item up, each followed by '|'.
@@ -352,9 +357,17 @@ BOOL CMenuItemEditor::Save()
 				target->SetAttribute("Text", value.c_str());
 				element->SetAttribute("Text", value.c_str());
 			}
-			// Quirk: copied over the menu entry's text without a length
-			// check.
-			wcscpy(m_pItem->m_pszText, m_items[ITEM_TITLE].m_strValue.c_str());
+			// Fix: the original copied the new title over the menu entry's
+			// text, which is sized for the old one (and missing when the
+			// entry had none), so a longer title overran the heap.
+			const std::wstring &title = m_items[ITEM_TITLE].m_strValue;
+			wchar_t *text = new wchar_t[title.size() + 1];
+			if (text != NULL)
+			{
+				wcscpy(text, title.c_str());
+				delete[] m_pItem->m_pszText;
+				m_pItem->m_pszText = text;
+			}
 		}
 		if (m_items[ITEM_ICON].m_bChanged)
 			SetBothAttributes(target, element, "AltIcon", StrFromWide(m_items[ITEM_ICON].m_strValue.c_str()));

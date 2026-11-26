@@ -22,9 +22,20 @@
 inline int _mbsicmp(const char *a, const char *b) { return _mbsicmp((const unsigned char *)a, (const unsigned char *)b); }
 inline int _mbsicmp(const unsigned char *a, const char *b) { return _mbsicmp(a, (const unsigned char *)b); }
 inline int _mbsicmp(const char *a, const unsigned char *b) { return _mbsicmp((const unsigned char *)a, b); }
+#ifdef UX_RXDK
+// The RXDK build (Makefile.rxdk, rxdk.project.json): clang with picolibc and
+// libc++ in place of MSVC 7.1's CRT. What the XDK had that RXDK spells
+// differently or lacks is in PlatformRxdk.h.
+#include "PlatformRxdk.h"
+#elif defined(UX_WIN32)
+// The Windows build (win32/, Makefile.win32): the Xbox APIs on Windows, from
+// xbox/win32. The modern CRT has vsnprintf and snprintf.
+#include "PlatformWin32.h"
+#else
 // MSVC 7.1 has only the underscored names.
 #define vsnprintf _vsnprintf
 #define snprintf _snprintf
+#endif
 #else
 #include <arpa/inet.h>  // inet_addr, INADDR_NONE (XNet on the Xbox)
 #include <cstddef>

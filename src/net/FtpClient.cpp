@@ -186,6 +186,9 @@ int CDirFTP::ParseReply(std::string &reply)
 // 0x0008259A (this in ecx)
 const char *CDirFTP::ReadReply()
 {
+	// (Fix: continuation lines loop back here; the original called itself
+	// once per line, so a server that kept sending them used up the stack.)
+next_line:
 	memset(m_szReply, 0, sizeof(m_szReply));
 	while (m_bBusy)
 		Sleep(5);
@@ -201,8 +204,8 @@ const char *CDirFTP::ReadReply()
 	}
 
 	// One byte at a time up to the '\n'; 20 seconds of silence ends it.
-	// Quirk: a closed connection (0 bytes) is waited on forever, and a full
-	// buffer isn't terminated.
+	// Quirk: a closed connection (0 bytes) is waited on forever. (Fix: a full
+	// buffer wasn't terminated; it now stops a byte short.)
 	int total = 0;
 	m_bBusy = TRUE;
 	char ch = 0;
@@ -225,7 +228,7 @@ const char *CDirFTP::ReadReply()
 				break;
 			tick = GetTickCount();
 		}
-	} while (total < 0x400);
+	} while (total < (int)sizeof(m_szReply) - 1);
 	m_bBusy = FALSE;
 
 	// "nnn text" ends the reply; "nnn-text", lines starting with a space
@@ -250,7 +253,7 @@ const char *CDirFTP::ReadReply()
 		}
 	}
 	Log(m_szReply, FTPLOG_REPLY);
-	return ReadReply();
+	goto next_line;
 }
 
 // ReadReply() then ParseReply() (inlined everywhere).
@@ -834,8 +837,11 @@ BOOL CDirFTP::ParseNextEntry(WIN32_FIND_DATAA *data)
 			std::string name = entry.name;
 			StrRemoveChar(name, '\x01');
 			StrTrimRight(StrTrimLeft(name));
-			// Quirk: no limit on the length.
-			strncpy(data->cFileName, name.c_str(), name.size());
+			// (Fix: the original copied the server's name with no limit on
+			// the length, and no terminator.)
+			size_t n = name.size() < sizeof(data->cFileName) - 1 ? name.size() : sizeof(data->cFileName) - 1;
+			memcpy(data->cFileName, name.c_str(), n);
+			data->cFileName[n] = '\0';
 			data->nFileSizeLow = (DWORD)entry.size;
 			data->dwFileAttributes = entry.flagtrycwd != 0 ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
 			TimeToFileTime(entry.mtime, &data->ftLastWriteTime);

@@ -511,9 +511,11 @@ BOOL CDirHDD::CopyFileEx(const char *source, const char *destination, CopyProgre
 	GetFileSizeEx(in, &size);
 	if (!out->OpenWrite(destination, 0, size.u.LowPart, 0, CREATE_ALWAYS))
 	{
+		DWORD error = GetLastError();
 		FindClose(in);
 		delete[] buffer;
-		SetLastError(GetLastError());   // (out is leaked)
+		delete out;   // (fix: the original leaked it)
+		SetLastError(error);
 		return FALSE;
 	}
 

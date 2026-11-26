@@ -1,5 +1,6 @@
 // CGamepadInput: one InputAction per frame from the gamepads and the IR
 // remote, with auto-repeat.
+#include "../common/FrameTime.h"
 #include "Gamepad.h"
 
 #include <cmath>
@@ -246,7 +247,10 @@ int CGamepadInput::GetAction()
 	{
 		if (m_padTimer.IsRunning())
 		{
-			if (m_fPadDelay > m_padTimer.GetElapsedSeconds())
+			// (Fix: the delay as it came out at 60 fps, where it was checked
+			// once a 60 Hz frame: the left stick's 25.5 ms was 33 ms. At a
+			// higher frame rate the short delays got shorter.)
+			if ((float)ceil(m_fPadDelay * FRAME_TUNED_HZ - 0.001f) / FRAME_TUNED_HZ > m_padTimer.GetElapsedSeconds())
 				return 0;
 			m_fPadRepeats = m_fPadRepeats + 1.0f;
 			s_dwRepeats++;

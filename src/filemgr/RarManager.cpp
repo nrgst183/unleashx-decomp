@@ -55,9 +55,8 @@ SRarEntry::SRarEntry(const char *entryName, const char *entryPath, DWORD unpacke
 	marked = FALSE;
 	wchar_t text[0x104];
 	memset(text, 0, sizeof(text));
-	MultiByteToWideChar(CP_ACP, 0, entryName, (int)strlen(entryName), text, 0x104);
-	// Quirk: the path goes through a _strdup copy that is never freed.
-	path = _strdup(entryPath);
+	MultiByteToWideChar(CP_ACP, 0, entryName, (int)strlen(entryName), text, 0x103);   // (fix: room for the terminator)
+	path = entryPath;   // (fix: the original leaked a _strdup copy)
 	name = text;
 	// "packed/unpacked" (the unpacked size without " B").
 	memset(text, 0, sizeof(text));
@@ -250,9 +249,9 @@ unsigned __stdcall CRarManager::ListThread(void *param)
 			name = StrMid(name, slash + 1, (int)name.size() - (slash + 1));
 		rar->m_entries.push_back(SRarEntry(name.c_str(), item->name, item->unpackedSize, item->packedSize));
 	}
-	// Quirk: this frees the list from where the walk ended, NULL, so the
-	// list leaks.
-	urarlib_freelist(item);
+	// (Fix: the original freed the list from where the walk ended, NULL, so
+	// every listing leaked; the entries above hold their own copies.)
+	urarlib_freelist(list);
 	std::sort(rar->m_entries.begin(), rar->m_entries.end(), RarEntryLess);
 	rar->m_bListed = TRUE;
 	return 0;
@@ -267,7 +266,7 @@ void CRarManager::OnFile(const char *name, bool ok, bool *proceed)
 		m_nExtracted++;
 	memset(m_szCurrentFile, 0, sizeof(m_szCurrentFile));
 	if (name != NULL)
-		MultiByteToWideChar(CP_ACP, 0, name, (int)strlen(name), m_szCurrentFile, 0x104);
+		MultiByteToWideChar(CP_ACP, 0, name, (int)strlen(name), m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 	if (!m_bCancel)
 	{
 		if (!g_bCancelOperation)
@@ -348,7 +347,7 @@ unsigned __stdcall CRarManager::ExtractThread(void *param)
 			CreateDirectoryTree(folder.c_str());
 		}
 		memset(rar->m_szCurrentFile, 0, sizeof(rar->m_szCurrentFile));
-		MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, rar->m_szCurrentFile, 0x104);
+		MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, rar->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 		// urarlib_get takes the folder; the entry lands there under its
 		// own name, folders included.
 		path = GetPathDirectory(path.c_str());
@@ -388,7 +387,7 @@ unsigned __stdcall CRarManager::ExtractThread(void *param)
 		if (ok)
 		{
 			memset(rar->m_szCurrentFile, 0, sizeof(rar->m_szCurrentFile));
-			MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, rar->m_szCurrentFile, 0x104);
+			MultiByteToWideChar(CP_ACP, 0, path.c_str(), (int)path.size() + 1, rar->m_szCurrentFile, 0x103);   // (fix: room for the terminator)
 			if (!urarlib_get(rar->m_strRarFile.c_str(), dir.c_str(), current.path.c_str(), NULL, NULL))
 			{
 				rar->m_bFailed = TRUE;
@@ -614,8 +613,8 @@ BOOL CRarManager::Render()
 	         g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
 	DrawRect(m_fX + 10.0f, s_fRarHeaderHeight + m_fY, m_fWidth - 20.0f, (m_fHeight - s_fRarHeaderHeight) - 10.0f,
 	         g_colorScheme.DIALOG_BORDERCOLOR, g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
-	wchar_t title[0x104];
-	MultiByteToWideChar(CP_ACP, 0, m_strRarFile.c_str(), (int)m_strRarFile.size(), title, 0x104);
+	wchar_t title[0x104] = { 0 };   // (fix: was uninitialized)
+	MultiByteToWideChar(CP_ACP, 0, m_strRarFile.c_str(), (int)m_strRarFile.size(), title, 0x103);   // (fix: room for the terminator)
 	m_pCaptionFont->DrawText(m_fX + 12.0f,
 	                         (m_pCaptionFont->m_fScaleFactorY * m_pCaptionFont->m_fFontHeight + 10.0f) * 0.5f + m_fY,
 	                         g_colorScheme.CAPTION_TEXTCOLOR, title, XBFONT_CENTER_Y | XBFONT_TRUNCATED,

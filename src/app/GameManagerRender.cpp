@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cwchar>
 
+#include "../common/FrameTime.h"
 #include "../common/StrUtil.h"
 #include "../render/D3D.h"
 #include "../render/Draw.h"
@@ -98,12 +99,12 @@ void CGameManager::DrawHeader(float x, float y)
 			// In MB, or in KB under 10 MB.
 			double bytes = (double)(LONGLONG)drive->freeBytes;
 			double amount = bytes * (1.0 / 1048576.0);
-			BOOL small = amount < 10.0;
-			if (small)
+			BOOL inKB = amount < 10.0;   // ("small" is a macro in the Windows SDK)
+			if (inKB)
 				amount = bytes * (1.0 / 1024.0);
 			wchar_t text[50];
 			FormatDoubleW(text, 2, TRUE, amount);
-			wcscat(text, small ? L" KB free" : L" MB free");
+			wcscat(text, inKB ? L" KB free" : L" MB free");
 			m_pTitleFont->DrawText(textX, LineHeight(m_pTitleFont) + textY, g_colorScheme.CAPTION_TEXTCOLOR, text,
 			                       XBFONT_CENTER_Y, 0.0f);
 		}
@@ -129,9 +130,10 @@ void CGameManager::DrawTab(float x, float y, const wchar_t *text, DWORD textColo
 	DrawPolygon(v, 6, fillColor, borderColor, alpha, lineWidth);
 	if (text != NULL)
 	{
-		// Quirk: the width is taken from y, not x.
+		// (Fix: the width is from x; the original took it from y, so the
+		// name could run past the plate.)
 		m_pFont->DrawText(sx * 10.0f + x, LineHeight(m_pFont) * 0.5f + sy * 4.0f + y, textColor, text,
-		                  XBFONT_CENTER_Y | 0x10, (right - y) - 20.0f);
+		                  XBFONT_CENTER_Y | 0x10, (right - x) - sx * 20.0f);
 	}
 }
 
@@ -153,7 +155,7 @@ void CGameManager::DrawSavePanel(float x, float y, int game, DWORD fillColor, DW
 	SetVertex(&v[0], l, t, 1.0f);
 	SetVertex(&v[1], right - 0.5f, t, 1.0f);
 	SetVertex(&v[2], right - 0.5f, b - sy * 14.0f, 1.0f);
-	SetVertex(&v[3], (right - 0.5f) - sy * 8.0f, b, 1.0f);   // (sy for an x)
+	SetVertex(&v[3], (right - 0.5f) - sx * 8.0f, b, 1.0f);   // (fix: the original had sy for this x)
 	SetVertex(&v[4], sx * 5.0f + (x - 0.5f), b, 1.0f);
 	SetVertex(&v[5], x - 0.5f, sy * 5.0f + b, 1.0f);
 	SetVertex(&v[6], l, b - sy * 7.0f, 1.0f);
@@ -177,8 +179,8 @@ void CGameManager::DrawSavePanel(float x, float y, int game, DWORD fillColor, DW
 	}
 	if ((m_nSaveRow / 3 + 1) * 3 < m_nSaveRows)
 	{
-		// More below. (sx for a y here.)
-		float arrowBottom = (bottom - sx * 2.0f) - 0.5f;
+		// More below. (Fix: the original had sx for this y.)
+		float arrowBottom = (bottom - sy * 2.0f) - 0.5f;
 		float arrowTop = arrowBottom - sy * 12.0f;
 		SetVertex(&v[0], arrowX, arrowTop, 1.0f);
 		SetVertex(&v[1], sx * 8.0f + arrowX, arrowBottom, 1.0f);
@@ -230,13 +232,15 @@ void CGameManager::DrawIcon(float x, float y, float width, float height, IDirect
 	D3DCOLOR color = ((DWORD)(int)(alpha * 255.0f) << 24) | 0xFFFFFF;
 	if (selected)
 	{
-		float margin = m_fScaleY * 2.0f;
+		// (Fix: each axis by its own scale; the original used y's for both.)
+		float marginX = m_fScaleX * 2.0f;
+		float marginY = m_fScaleY * 2.0f;
 		if (s_fIconPulse >= 1.0f)
 			s_fIconPulseStep = -1.0f;
 		else if (s_fIconPulse <= 0.1f)
 			s_fIconPulseStep = 1.0f;
-		s_fIconPulse = s_fIconPulseStep * 0.008f + s_fIconPulse;
-		DrawBevelBox(left - margin, top - margin, margin * 2.0f + w, margin * 2.0f + h,
+		s_fIconPulse = s_fIconPulseStep * FrameStep(0.008f) + s_fIconPulse;   // (fix: by time)
+		DrawBevelBox(left - marginX, top - marginY, marginX * 2.0f + w, marginY * 2.0f + h,
 		             g_colorScheme.DIALOG_BORDERCOLOR, g_colorScheme.CAPTION_BACKCOLOR, s_fIconPulse, 1);
 	}
 	float l = innerLeft - 0.5f;
@@ -280,7 +284,9 @@ void CGameManager::DrawIcon(float x, float y, float width, float height, IDirect
 
 // 0x00119C91
 // The plate at the left with the selected game's (or save's) details.
-// (Quirks: some sizes use the other axis' scale.)
+// (Fix: the inner panel's width and height use their own axis' scale. The
+// original swapped them, so at 16:9 it came out too narrow for the text and
+// too tall.)
 void CGameManager::DrawInfoPanel(float x, float y)
 {
 	float sx = m_fScaleX;
@@ -303,11 +309,11 @@ void CGameManager::DrawInfoPanel(float x, float y)
 	float textX = sx * 14.0f + (x - sx * 10.0f);
 	float textY = sy * 18.0f + y;
 	float cut = sx * 14.0f;
-	float right = sy * 172.0f + textX;
+	float right = sx * 172.0f + textX;
 	float l2 = textX - 0.5f;
 	float t2 = textY - 0.5f;
 	float r2 = right - 0.5f;
-	float b2 = (sx * 150.0f + textY) - 0.5f;
+	float b2 = (sy * 150.0f + textY) - 0.5f;
 	SetVertex(&v[0], cut + l2, sy * 6.0f + t2, 0.0f);
 	SetVertex(&v[1], sx * 82.0f + l2, sy * 6.0f + t2, 0.0f);
 	SetVertex(&v[2], sx * 87.0f + l2, t2, 0.0f);
@@ -327,7 +333,7 @@ void CGameManager::DrawInfoPanel(float x, float y)
 	SGameEntry *game = m_games[m_nGame];
 	if (game == NULL)
 		return;
-	float width = (right - textX) - 8.0f;
+	float width = (right - textX) - sx * 8.0f;
 	DWORD flags = 0x10;
 	m_pFont->DrawText(textX, textY, g_colorScheme.CAPTION_TEXTCOLOR, game->name, flags, width);
 	float step = sy * 2.0f;
@@ -369,7 +375,7 @@ HRESULT CGameManager::Render()
 		float sy = m_fScaleY;
 		DimScreen(0.7f);
 		g_pd3dDevice->SetTransform(D3DTS_WORLD, XDK_CAST(const D3DMATRIX *, m_world));
-		float listX = m_fX + 80.0f;
+		float listX = sx * 80.0f + m_fX;   // (fix: scaled)
 		float y = m_fY;
 		float bottom = y + m_fHeight;
 		DrawHeader(m_fX, y);
@@ -393,8 +399,8 @@ HRESULT CGameManager::Render()
 			{
 				DrawTab(sx * 92.0f + listX, y, game->name, g_colorScheme.CAPTION_TEXTCOLOR,
 				        g_colorScheme.CAPTION_BACKCOLOR, g_colorScheme.DIALOG_BORDERCOLOR, 1.0f, 2);
-				// (Quirk: here the panel's 92 isn't scaled.)
-				DrawSavePanel(listX + 92.0f, y, index, g_colorScheme.DIALOG_INNER_BACKCOLOR,
+				// (Fix: the 92 is scaled, as for the other games.)
+				DrawSavePanel(sx * 92.0f + listX, y, index, g_colorScheme.DIALOG_INNER_BACKCOLOR,
 				              g_colorScheme.DIALOG_INNER_BORDERCOLOR, 1.0f);
 				DrawIcon(listX, y, sx * 92.0f, sy * 92.0f, picture, 1.0f, !m_bInSaves);
 			}
@@ -488,7 +494,7 @@ HRESULT CGameManager::Render()
 			int dots = (int)((GetTickCount() / 500) % 3);
 			DrawBevelBox(boxX, boxY, sx * 400.0f, sy * 80.0f, g_colorScheme.DIALOG_BORDERCOLOR,
 			             g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
-			boxY = boxY + 10.0f;
+			boxY = sy * 10.0f + boxY;   // (fix: scaled)
 			const wchar_t *text = dots < 1 ? L"Copying. Please Wait..."
 			                               : dots == 2 ? L"Copying. Please Wait.." : L"Copying. Please Wait.";
 			m_pFont->DrawText(sx * 10.0f + boxX, boxY, g_colorScheme.MENU_ACTIVETEXTCOLOR, text, 0, 0.0f);

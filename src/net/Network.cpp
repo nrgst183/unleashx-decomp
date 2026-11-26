@@ -288,7 +288,10 @@ int ScanNetworkClients()
 	}
 
 	{
+		// (Fix: the replies come from any host on the LAN and a full 128-byte
+		// one had no terminator; each receive now leaves room for one.)
 		char reply[128];
+		memset(reply, 0, sizeof(reply));
 		sockaddr_in from;
 		socklen_t fromLen = sizeof(from);
 		int received;
@@ -297,7 +300,7 @@ int ScanNetworkClients()
 		// keep reading until the socket runs dry.
 		for (int tries = 3;;)
 		{
-			received = recvfrom(s, reply, sizeof(reply), 0, (sockaddr *)&from, &fromLen);
+			received = recvfrom(s, reply, sizeof(reply) - 1, 0, (sockaddr *)&from, &fromLen);
 			if (received > 0)
 				break;
 			Sleep(500);
@@ -330,7 +333,7 @@ int ScanNetworkClients()
 					memset(&client, 0, sizeof(client));
 					std::string field;
 					TakeField(text, ";", field);
-					strncpy(client.name, field.c_str(), 32);
+					strncpy(client.name, field.c_str(), sizeof(client.name) - 1);
 					if (TakeField(text, ";", field) != -1)
 					{
 						strncpy(client.ftpUser, field.c_str(), 15);
@@ -356,7 +359,7 @@ int ScanNetworkClients()
 
 			memset(reply, 0, sizeof(reply));
 			memset(&from, 0, sizeof(from));
-			received = recvfrom(s, reply, sizeof(reply), 0, (sockaddr *)&from, &fromLen);
+			received = recvfrom(s, reply, sizeof(reply) - 1, 0, (sockaddr *)&from, &fromLen);
 		}
 	}
 
@@ -465,7 +468,10 @@ static void InitNetworkStack()
 // it's up.
 static unsigned __stdcall WaitForLinkThread(void *arg)
 {
-	int waitSeconds = *(int *)arg;   // sic: points into the caller's stack frame
+	// (Fix: the original passed &waitSeconds, a local of the function that
+	// starts this thread and returns right away, so this read whatever was
+	// on its old stack frame by then. The value now comes in the pointer.)
+	int waitSeconds = (int)(intptr_t)arg;
 	int tries = 0;
 	while (tries < waitSeconds + 1)
 	{
@@ -485,7 +491,7 @@ static unsigned __stdcall WaitForLinkThread(void *arg)
 static void StartWaitForLinkThread(int waitSeconds)
 {
 	unsigned threadId;
-	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, WaitForLinkThread, &waitSeconds, 0, &threadId);
+	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, WaitForLinkThread, (void *)(intptr_t)waitSeconds, 0, &threadId);
 	if (thread != NULL && thread != INVALID_HANDLE_VALUE)
 	{
 		OutputDebugStringA("NetWork_InitThread creation succeeded.\r\n");

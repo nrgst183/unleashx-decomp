@@ -7,7 +7,7 @@
 #define ZIPAPI
 #endif
 
-#include <Windows.h>
+#include <windows.h>
 
 // UNZIPPING functions -- for unzipping.
 // This file is a repackaged form of extracts from the zlib code available

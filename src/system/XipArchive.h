@@ -25,14 +25,16 @@ struct SXipItem
 	char name[0x108];      // +0x10
 };
 
+// Names larger than this aren't an XIP's.
+#define XIP_MAX_NAMES_SIZE 0x100000
+
 // 0x28 bytes. The first 0x10 bytes are the file's header.
 class CXipArchive
 {
 public:
 	// Opens and reads the directory. It closes first, so the object must
-	// start zeroed (callers clear it). Quirk: on a failure after the file
-	// was opened it's closed but m_pFile isn't cleared (nor the freed
-	// tables), so Close must not be called then. (this in esi)
+	// start zeroed (callers clear it). A failure leaves it closed and
+	// cleared. (this in esi)
 	HRESULT Open(const char *path);                   // 0x000BDCBE
 	// Frees everything and clears the object. (this in eax)
 	void Close();                                     // 0x000BDC0F

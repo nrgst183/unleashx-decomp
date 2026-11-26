@@ -107,12 +107,22 @@ HRESULT CSettingsMenu::Init(CXBFont *font)
 // 0x0002B530
 void CSettingsMenu::Show()
 {
+	Layout();
+	m_bClosed = FALSE;
+}
+
+void CSettingsMenu::Layout()
+{
 	m_fY = 20.0f;
 	m_fX = 30.0f;
 	m_fWidth = 580.0f;
 	m_fHeight = 440.0f;
 	ScaleToScreen(&m_fX, &m_fWidth, &m_fY, &m_fHeight, TRUE);
-	m_bClosed = FALSE;
+	for (int i = 0; i < PAGE_COUNT; i++)
+	{
+		if (m_pPages[i] != NULL)
+			m_pPages[i]->Layout();
+	}
 }
 
 // 0x000C62EE

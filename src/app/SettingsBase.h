@@ -57,6 +57,8 @@ public:
 	virtual HRESULT Render();                                 // 0x000C551A
 	// Lays the page out again and forgets unsaved changes.
 	virtual void Reset();                                     // 0x000C16C8
+	// Reset's layout alone, for a new screen size.
+	void Layout();
 	virtual BOOL IsOpen();                                    // 0x000204BF
 	virtual void SetItemEnabled(int index, BOOL enabled);     // 0x000204C8
 

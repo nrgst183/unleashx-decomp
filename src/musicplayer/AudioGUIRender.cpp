@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cwchar>
 
+#include "../common/FrameTime.h"
 #include "../audio/AudioDevice.h"
 #include "../audio/AudioPlayer.h"
 #include "../audio/MusicManager.h"
@@ -278,11 +279,8 @@ BOOL CAudioGUI::Render()
 {
 	DimScreen(0.3f);
 	// Texts scroll a step every <ScrollSpeed> ms (first after 2 s).
-	static DWORD s_dwScrollTick = GetTickCount() + 2000;   // 0x0027A41C
-	DWORD now = GetTickCount();
-	BOOL step = s_dwScrollTick < now;
-	if (step)
-		s_dwScrollTick = (DWORD)m_pSettings->m_nScrollSpeed + now;
+	static unsigned long s_dwScrollTick = GetTickCount() + 2000;   // 0x0027A41C
+	BOOL step = FrameDue(&s_dwScrollTick, GetTickCount(), (DWORD)m_pSettings->m_nScrollSpeed);   // (fix: as at 60 fps)
 	float scale = GetSkinTextScale();
 
 	// The player's background.
@@ -488,13 +486,9 @@ void CAudioGUI::RenderBuiltIn()
 		s_bBuiltInScrollInit = TRUE;
 		s_dwBuiltInScrollTime = GetTickCount() + 2000;
 	}
-	DWORD now = GetTickCount();
-	BOOL step = FALSE;
-	if (s_dwBuiltInScrollTime < now)
-	{
-		s_dwBuiltInScrollTime = m_pSettings->m_nScrollSpeed + now;
-		step = TRUE;
-	}
+	unsigned long tick = s_dwBuiltInScrollTime;
+	BOOL step = FrameDue(&tick, GetTickCount(), (DWORD)m_pSettings->m_nScrollSpeed);   // (fix: as at 60 fps)
+	s_dwBuiltInScrollTime = tick;
 	float textX = m_fStateX + margin;
 	float textY = margin + m_fStateY;
 	float screenWidth = 640.0f, screenHeight = 480.0f;

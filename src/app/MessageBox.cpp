@@ -6,6 +6,7 @@
 #include <cwchar>
 
 #include "../common/StrUtil.h"
+#include "../common/FrameTime.h"
 #include "../input/Gamepad.h"
 #include "../render/D3D.h"
 #include "../render/Draw.h"
@@ -495,7 +496,8 @@ HRESULT CMessageBox::Render()
 	}
 
 	// The window, sliding down from above the screen 20 pixels (per 480
-	// lines) every few milliseconds.
+	// lines) a 60 Hz frame. (Fix: by time; the original stepped each frame
+	// more than 5 ms apart.)
 	static float s_fSlide = m_fHeight + m_fY;   // 0x0027A374
 	float slide;
 	if (m_bSliding)
@@ -504,11 +506,10 @@ HRESULT CMessageBox::Render()
 		DrawWindowFrame(m_fX, m_fY - slide, m_fWidth, m_fHeight, m_fPadding, m_fLineHeight, m_fLineHeight * 2.0f,
 		                g_colorScheme.DIALOG_BORDERCOLOR, g_colorScheme.DIALOG_BACKCOLOR,
 		                g_colorScheme.DIALOG_INNER_BORDERCOLOR, g_colorScheme.DIALOG_INNER_BACKCOLOR, 2, 1);
-		if (GetTickCount() - m_dwSlideTime > 5)
 		{
 			float displayHeight = 480.0f;
 			GetDisplaySize(NULL, &displayHeight, FALSE);
-			s_fSlide = s_fSlide - (float)ceil(displayHeight * (1.0f / 480.0f)) * 20.0f;
+			s_fSlide = s_fSlide - FrameStep((float)ceil(displayHeight * (1.0f / 480.0f)) * 20.0f);
 			m_dwSlideTime = GetTickCount();
 		}
 		if (0.0f >= s_fSlide)

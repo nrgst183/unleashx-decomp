@@ -73,8 +73,9 @@ void CSkin::PlayPreview(const char *file)
 }
 
 // 0x001017DE (this in eax)
-// Quirk: the picture the last program left (CaptureSavedScreen) is made
-// first and then replaced by the screen's picture without being released.
+// (Fix: the picture the last program left (CaptureSavedScreen) is released
+// before the screen's picture replaces it; the original leaked it, about
+// 1.2 MB on every skin change.)
 void CSkin::ChangeSkin(const char *path)
 {
 	if (m_pEventSink != NULL)
@@ -107,9 +108,15 @@ void CSkin::ChangeSkin(const char *path)
 	{
 		D3DDISPLAYMODE mode;
 		g_pd3dDevice->GetDisplayMode(&mode);
+		if (m_pLoadingTexture != NULL)
+		{
+			m_pLoadingTexture->Release();
+			m_pLoadingTexture = NULL;
+		}
 		g_pd3dDevice->CreateTexture(640, 480, 1, 0, mode.Format, 0, &m_pLoadingTexture);
 		IDirect3DSurface8 *level = NULL;
-		m_pLoadingTexture->GetSurfaceLevel(0, &level);
+		if (m_pLoadingTexture != NULL)
+			m_pLoadingTexture->GetSurfaceLevel(0, &level);
 		if (level != NULL)
 		{
 			D3DXLoadSurfaceFromSurface(level, NULL, NULL, front, NULL, NULL, D3DX_FILTER_NONE, 0);

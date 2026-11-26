@@ -598,11 +598,13 @@ HRESULT CWMVideoPlayer::ProcessInput(int *action, SGamepadState ** /*pad*/)
 	m_nFrames++;
 	if (!m_bXmv)
 	{
-		if (m_pWmv->m_bFrameReady)
+		if (m_pWmv == NULL)   // (fix: the loader thread drops it when a file fails to open)
+			m_bFrameReady = FALSE;
+		else if (m_pWmv->m_bFrameReady)
 			m_pWmv->CopyFrame(m_pTextures[m_nCurrent]);
 		else
 			m_bFrameReady = FALSE;
-		if (m_pWmv->DecodeNext() == 1)
+		if (m_pWmv == NULL || m_pWmv->DecodeNext() == 1)
 			m_bPlaying = FALSE;
 	}
 	else

@@ -44,6 +44,54 @@ SScreenRect GetScreenRect()
 	return rect;
 }
 
+float g_fPictureAspect;
+
+// ScaleToScreen when the Windows build draws at its window's size: one scale
+// for both axes (the smaller), the layout centered in the window. Something
+// that spans the whole layout one way (a background) still fills the window
+// that way.
+static void ScaleEvenly(float *x, float *width, float *y, float *height, BOOL base640x480)
+{
+	const SViewport &viewport = g_pSettings->m_viewport;
+	float skinWidth = (float)g_pSettings->m_nSkinWidth;
+	float skinHeight = (float)g_pSettings->m_nSkinHeight;
+	float screenWidth = (float)viewport.Width;
+	float screenHeight = (float)viewport.Height;
+	float scale = screenWidth / skinWidth < screenHeight / skinHeight ? screenWidth / skinWidth
+	                                                                  : screenHeight / skinHeight;
+	float scale640 = screenWidth / 640.0f < screenHeight / 480.0f ? screenWidth / 640.0f : screenHeight / 480.0f;
+	float sizeScale = base640x480 ? scale640 : scale;
+	float offsetX = (screenWidth - skinWidth * scale) * 0.5f + (float)viewport.X;
+	float offsetY = (screenHeight - skinHeight * scale) * 0.5f + (float)viewport.Y;
+	float fullWidth = base640x480 ? 640.0f : skinWidth;
+	float fullHeight = base640x480 ? 480.0f : skinHeight;
+
+	if (x != NULL && width != NULL && *x <= 0.0f && *width >= fullWidth)
+	{
+		*x = (float)viewport.X;
+		*width = screenWidth;
+	}
+	else
+	{
+		if (x != NULL)
+			*x = scale * *x + offsetX;
+		if (width != NULL && *width != 0.0f)
+			*width = sizeScale * *width;
+	}
+	if (y != NULL && height != NULL && *y <= 0.0f && *height >= fullHeight)
+	{
+		*y = (float)viewport.Y;
+		*height = screenHeight;
+	}
+	else
+	{
+		if (y != NULL)
+			*y = scale * *y + offsetY;
+		if (height != NULL && *height != 0.0f)
+			*height = sizeScale * *height;
+	}
+}
+
 // 0x0009E34E (x in esi, width in edi)
 void ScaleToScreen(float *x, float *width, float *y, float *height, BOOL base640x480)
 {
@@ -52,6 +100,11 @@ void ScaleToScreen(float *x, float *width, float *y, float *height, BOOL base640
 	DWORD skinHeight = (DWORD)g_pSettings->m_nSkinHeight;
 	if (viewport.Width == skinWidth && viewport.Height == skinHeight)
 		return;
+	if (g_fPictureAspect > 0.0f)
+	{
+		ScaleEvenly(x, width, y, height, base640x480);
+		return;
+	}
 
 	if (x != NULL)
 		*x = (float)viewport.Width / (float)skinWidth * *x + (float)viewport.X;

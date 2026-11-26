@@ -45,7 +45,7 @@ CMusicManager::CMusicManager(BOOL useSoundtracks, BOOL useFolder, const char *fo
 	if (useFolder && folder != NULL && DirectoryExists(folder))
 	{
 		m_bUseMusicFolder = TRUE;
-		m_strMusicFolder = _strdup(folder);   // (leaked)
+		m_strMusicFolder = folder;   // (fix: no leaked _strdup copy)
 	}
 	else
 	{
@@ -274,7 +274,7 @@ IDirect3DTexture8 *CMusicManager::GetAlbumArt()
 		return NULL;
 	if (m_pAlbumArt == NULL && m_strAlbumArt.size() != 0)
 	{
-		if (!LoadTextureFromFile(m_strAlbumArt.c_str(), g_pd3dDevice, &m_pAlbumArt, 0x80, 0x80, NULL))
+		if (!LoadTextureFromFileMax(m_strAlbumArt.c_str(), g_pd3dDevice, &m_pAlbumArt, 0x80, 0x80))
 		{
 			m_pAlbumArt = NULL;
 			m_strAlbumArt.clear();
@@ -420,7 +420,7 @@ void CMusicManager::ScanMusicFolder(const char *path, const wchar_t *name)
 			{
 				// Quirk: the "folder name" starts at the last backslash, which
 				// for a path ending in one is just that backslash.
-				std::string folder = _strdup(path);   // (leaked)
+				std::string folder = path;   // (fix: no leaked _strdup copy)
 				int slash = StrReverseFind(folder, "\\");
 				folder = StrRight(folder, (int)folder.size() - slash);
 				MultiByteToWideChar(0, 0, folder.c_str(), (int)folder.size(), title, 31);
@@ -1368,13 +1368,23 @@ HRESULT CMusicManager::Init(const char *dataPath)
 	if (m_pPlayers[3] != NULL)
 		m_nPlayers++;
 	m_nPlayers++;
-	// Quirk: a player that fails to set up is deleted but stays in its slot.
-	CAudioPlayer *player = FindPlayer(AUDIO_WMA);
-	if (player != NULL && player->Init(dataPath) < 0)
-		delete player;
-	player = FindPlayer(AUDIO_MP3);
-	if (player != NULL && player->Init(dataPath) < 0)
-		delete player;
+	// A player that fails to set up is deleted. (Fix: the original left it in
+	// its slot, so the next song of that type, and the destructor, used it
+	// after the delete.)
+	static const int s_initTypes[2] = { AUDIO_WMA, AUDIO_MP3 };
+	for (int t = 0; t < 2; t++)
+	{
+		CAudioPlayer *player = FindPlayer(s_initTypes[t]);
+		if (player != NULL && player->Init(dataPath) < 0)
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				if (m_pPlayers[i] == player)
+					m_pPlayers[i] = NULL;
+			}
+			delete player;
+		}
+	}
 	SeedRandom();
 	UINT index = SOUNDTRACK_FIRST_USER;
 	if (m_soundtracks.size() > 2)

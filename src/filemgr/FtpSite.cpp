@@ -107,7 +107,7 @@ void CFTPSite::Reset()
 	SetItemValue(&m_items[ITEM_PASV], m_bPassive ? L"Yes" : L"No", FALSE);
 	StrUtf8ToWide(m_strRemotePath.c_str(), text, 100);
 	SetItemValue(&m_items[ITEM_REMOTE_PATH], text, FALSE);
-	StrUtf8ToWide(m_strLocalPath.c_str(), text, 0x104);
+	StrUtf8ToWide(m_strLocalPath.c_str(), text, 0x104 - 1);   // (fix: the size excludes the terminator)
 	SetItemValue(&m_items[ITEM_LOCAL_PATH], text, FALSE);
 	// The name only for a new site; a quick connect has no local path.
 	SetItemEnabled(ITEM_NAME, m_bNewSite);

@@ -183,7 +183,7 @@ static BOOL CheckForUpdate(CAppSettings *settings)
 	{
 		std::string text;
 		if (!session.m_bSavedToFile)
-			text = _strdup(session.GetData());   // Quirk: the copy is never freed
+			text = session.GetData();   // (fix: the original leaked a _strdup copy of every page)
 		else
 			text = ReadTextFile(session.m_szFile);
 

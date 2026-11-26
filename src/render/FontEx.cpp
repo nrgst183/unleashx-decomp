@@ -14,8 +14,10 @@
 static const wchar_t s_szMeasureText[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 #define MEASURE_TEXT_LENGTH 62
 
-// The XFONT glyph cache size.
-#define TRUETYPE_CACHE_SIZE 0x4000
+// The XFONT glyph cache size. (Fix: 64 KB; the original's 16 KB held a few
+// dozen glyphs of a menu-sized face, so XFONT rendered them again every
+// frame.)
+#define TRUETYPE_CACHE_SIZE 0x10000
 
 // 0x00137887
 CXBFontEx::CXBFontEx()
@@ -104,10 +106,11 @@ HRESULT CXBFontEx::End()
 }
 
 // 0x00031D3C
-// TrueType: XFONT measures the whole text, but that result is written as
-// an integer into the float width and then replaced: the width is the
-// longest line in average character widths plus the character spacing
-// (a newline counts as a character), the height a cell height per line.
+// TrueType: the width is the longest line in average character widths plus
+// the character spacing (a newline counts as a character), the height a
+// cell height per line. (The original also had XFONT measure the whole text
+// first, into the float width as an integer that the loop then replaced:
+// work on every draw for nothing, so it's gone.)
 HRESULT CXBFontEx::GetTextExtent(const wchar_t *text, float *width, float *height, BOOL firstLineOnly)
 {
 	if (m_pTrueTypeFont == NULL)
@@ -117,7 +120,6 @@ HRESULT CXBFontEx::GetTextExtent(const wchar_t *text, float *width, float *heigh
 	*width = 0.0f;
 	*height = 0.0f;
 	unsigned length = (unsigned)wcslen(text);
-	XFONT_GetTextExtent(m_pTrueTypeFont, text, length, (unsigned *)width);
 	unsigned cellHeight, descent;
 	XFONT_GetFontMetrics(m_pTrueTypeFont, &cellHeight, &descent);
 	float lineHeight = (float)(cellHeight + descent);

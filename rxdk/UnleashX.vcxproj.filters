@@ -1,0 +1,1050 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{6E1F0000-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\app">
+      <UniqueIdentifier>{6E1F0001-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\audio">
+      <UniqueIdentifier>{6E1F0002-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\common">
+      <UniqueIdentifier>{6E1F0003-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\filemgr">
+      <UniqueIdentifier>{6E1F0004-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\input">
+      <UniqueIdentifier>{6E1F0005-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\media">
+      <UniqueIdentifier>{6E1F0006-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\musicplayer">
+      <UniqueIdentifier>{6E1F0007-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\net">
+      <UniqueIdentifier>{6E1F0008-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\render">
+      <UniqueIdentifier>{6E1F0009-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\settings">
+      <UniqueIdentifier>{6E1F000A-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\skin">
+      <UniqueIdentifier>{6E1F000B-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\system">
+      <UniqueIdentifier>{6E1F000C-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\thirdparty">
+      <UniqueIdentifier>{6E1F000D-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui">
+      <UniqueIdentifier>{6E1F000E-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\xdk">
+      <UniqueIdentifier>{6E1F000F-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\xml">
+      <UniqueIdentifier>{6E1F0010-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty">
+      <UniqueIdentifier>{6E1F0011-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\fat_io_lib">
+      <UniqueIdentifier>{6E1F0012-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\ftpparse">
+      <UniqueIdentifier>{6E1F0013-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\libmad">
+      <UniqueIdentifier>{6E1F0014-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\unrar">
+      <UniqueIdentifier>{6E1F0015-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="thirdparty\zip_utils">
+      <UniqueIdentifier>{6E1F0016-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="xbox">
+      <UniqueIdentifier>{6E1F0017-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="xbox\rxdk">
+      <UniqueIdentifier>{6E1F0018-0D3B-4C2A-9E71-5A4B3C2D1E0F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\app\AppRender.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\Background.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\ClockEditor.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\FrameMove.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\FtpEvents.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\GameManager.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\GameManagerRender.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\HddLockDialog.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\IPAddressEditor.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\Initialize.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\LaunchScreen.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\Main.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\MenuActions.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\MenuItemEditor.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\MessageBox.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\NetworkThread.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\NotePad.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\Resources.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\ScreenSaver.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsAutoLaunch.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsBase.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsDateTime.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsHDD.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsLiveUpdate.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsMenu.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsMusic.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsNetwork.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsQuickLaunch.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsScreenAdjust.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsSystem.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SettingsVideo.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SkinBrowser.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\SlideShow.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\Startup.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\UnleashX.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\XBAppRun.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\app\XboxInfo.cpp">
+      <Filter>src\app</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\AudioDevice.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\AudioPump.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\CdAudio.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\CdPlayer.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\DashUtil.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\Mp3Decoder.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\Mp3Player.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\MusicManager.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\Sound.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\SoundEffects.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\SoundtrackDB.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\WavPlayer.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\audio\WmaPlayer.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\Base64.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\FileLoad.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\FileUtil.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\ObList.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\StrUtil.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\Thread.cpp">
+      <Filter>src\common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FileFolder.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FileManager.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FileManagerInput.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FileManagerOpen.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FileManagerOps.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpFileFolder.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpLog.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpManager.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpManagerInput.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpQueue.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpServerList.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\FtpSite.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\ImageViewer.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\RarManager.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\XMViewer.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\XipManager.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\filemgr\ZipManager.cpp">
+      <Filter>src\filemgr</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\input\Gamepad.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\media\WMVideoPlayer.cpp">
+      <Filter>src\media</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\AudioGUI.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\AudioGUIInput.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\AudioGUIRender.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\SongList.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\TrackCopy.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\TrackEditor.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\musicplayer\TrackOptions.cpp">
+      <Filter>src\musicplayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\FtpClient.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\FtpConnection.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\FtpServer.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\FtpTransfer.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\Http.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\HttpProgress.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\Network.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\Newsfeed.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\Sntp.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net\Socket.cpp">
+      <Filter>src\net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\Draw.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\FontEx.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\FontTable.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\ImageManager.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\ProgressBox.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\Screen.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\Texture.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\TextureTable.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\render\XbeImage.cpp">
+      <Filter>src\render</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\settings\AppSettings.cpp">
+      <Filter>src\settings</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\settings\ConfigLoader.cpp">
+      <Filter>src\settings</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\Skin.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinColors.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinDefaults.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinLoader.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinParser.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinPreview.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinRender.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\skin\SkinText.cpp">
+      <Filter>src\skin</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\Drives.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\Dvd.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\DvdPoll.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileFAT32.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileHDD.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileIO.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileISO9660.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileList.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileOps.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\FileOpsState.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\Hardware.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\Md5.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\Storage.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\SystemControl.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\SystemInfo.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\XSettings.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\Xbe.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\XbeLaunch.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\XbePatch.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\system\XipArchive.cpp">
+      <Filter>src\system</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\thirdparty\Md5.cpp">
+      <Filter>src\thirdparty</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\DropDown.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\FileBrowser.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\Language.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\Menu.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\MenuItem.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\MenuRender.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\MenuScan.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\OptionMenu.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\PassCode.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\UpDown.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ui\VirtualKeyboard.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\WmvPlayer.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBApp.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBFont.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBInput.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBMemUnit.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBMesh.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBResource.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XBSound.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xdk\XMVPlayer.cpp">
+      <Filter>src\xdk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xml\XmlDocument.cpp">
+      <Filter>src\xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\xml\XmlUtil.cpp">
+      <Filter>src\xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\Fat32.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\IoSupport.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\Iso9660.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\RxdkCompat.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\Trace.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\Unrar.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\XKUtils.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\xbox\Zip.cpp">
+      <Filter>xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\zip_utils\unzip.cpp">
+      <Filter>thirdparty\zip_utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\zip_utils\zip.cpp">
+      <Filter>thirdparty\zip_utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\ftpparse\ftpparse.c">
+      <Filter>thirdparty\ftpparse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_access.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_cache.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_filelib.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_format.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_misc.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_string.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_table.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\fat_io_lib\fat_write.c">
+      <Filter>thirdparty\fat_io_lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\bit.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\decoder.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\fixed.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\frame.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\huffman.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\layer12.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\layer3.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\stream.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\synth.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\timer.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\libmad\version.c">
+      <Filter>thirdparty\libmad</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\archive.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\arcread.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\cmddata.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\consio.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\crc.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\crypt.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\encname.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\errhnd.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\extinfo.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\extract.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\filcreat.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\file.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\filefn.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\filestr.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\find.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\getbits.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\global.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\int64.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\isnt.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\log.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\match.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\options.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\pathfn.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\rar.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\rarvm.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\rawread.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\rdwrfn.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\recvol.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\resource.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\rijndael.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\rs.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\savepos.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\scantree.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\sha1.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\strfn.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\strlist.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\system.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\timefn.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\ulinks.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\unicode.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\unpack.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\unrar\volume.cpp">
+      <Filter>thirdparty\unrar</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\app\FtpEvents.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\GameManager.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\MenuItemEditor.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\Screens.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\SettingsBase.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\SettingsPages.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\UnleashX.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\app\XBApp.h">
+      <Filter>src\app</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\AudioDevice.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\AudioPlayer.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\AudioPump.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\CdAudio.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\DSound.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\DashUtil.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\Mp3Decoder.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\MusicManager.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\Sound.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\SoundEffects.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\audio\SoundtrackDB.h">
+      <Filter>src\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\Base64.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\FileUtil.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\FrameTime.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\ObList.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\Platform.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\PlatformRxdk.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\StdObject.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\StrUtil.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\Thread.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\XboxKernel.h">
+      <Filter>src\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\filemgr\FileFolder.h">
+      <Filter>src\filemgr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\filemgr\FileManager.h">
+      <Filter>src\filemgr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\filemgr\FtpLog.h">
+      <Filter>src\filemgr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\filemgr\FtpManager.h">
+      <Filter>src\filemgr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\filemgr\Viewers.h">
+      <Filter>src\filemgr</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\input\Gamepad.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\input\XBInput.h">
+      <Filter>src\input</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\media\WMVideoPlayer.h">
+      <Filter>src\media</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\musicplayer\AudioGUI.h">
+      <Filter>src\musicplayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\musicplayer\SongList.h">
+      <Filter>src\musicplayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\musicplayer\TrackOptions.h">
+      <Filter>src\musicplayer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\FtpClient.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\FtpServer.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\Http.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\Network.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\Newsfeed.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\Socket.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net\XNet.h">
+      <Filter>src\net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\render\D3D.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\render\Draw.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\render\Fonts.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\render\ImageManager.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\render\Texture.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\render\XFont.h">
+      <Filter>src\render</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\settings\AppSettings.h">
+      <Filter>src\settings</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\settings\ConfigLoader.h">
+      <Filter>src\settings</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\skin\Skin.h">
+      <Filter>src\skin</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\skin\SkinColors.h">
+      <Filter>src\skin</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\skin\SkinText.h">
+      <Filter>src\skin</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\Drives.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\FileIO.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\FileOps.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\Storage.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\SystemControl.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\SystemInfo.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\XBMemUnit.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\XSettings.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\XbeLaunch.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\system\XipArchive.h">
+      <Filter>src\system</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\Fat32.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\FtpParse.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\IoSupport.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\Iso9660.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\Mad.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\Md5.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\Unrar.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\XKUtils.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\XUnzip.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\thirdparty\XZip.h">
+      <Filter>src\thirdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\FileBrowser.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\Language.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\Menu.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\MenuDialogs.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\MenuItem.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\MenuScan.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\StringIds.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\UpDown.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ui\VirtualKeyboard.h">
+      <Filter>src\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\xml\XmlDocument.h">
+      <Filter>src\xml</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\xml\XmlUtil.h">
+      <Filter>src\xml</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\dir.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\dos.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\except.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\io.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\mbstring.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\new.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\xbox\rxdk\process.h">
+      <Filter>xbox\rxdk</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

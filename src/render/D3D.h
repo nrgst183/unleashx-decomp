@@ -371,8 +371,12 @@ void XBUtil_InitMaterial(D3DMATERIAL8 *material, float r, float g, float b, floa
 
 #ifdef _XBOX
 #include <xgraphics.h>
-// Not in the XDK headers.
+#if defined(UX_WIN32)
+extern "C" IDirect3DSurface8 *__stdcall AvGetSavedDataAddress();   // (xbox/win32: none)
+#elif !defined(UX_RXDK)
+// Not in the XDK headers (RXDK's kernel headers have it, returning PVOID).
 extern "C" __declspec(dllimport) IDirect3DSurface8 *__stdcall AvGetSavedDataAddress();
+#endif
 namespace D3D { namespace PixelJar {
 void __stdcall Get2DSurfaceDesc(D3DPixelContainer *container, UINT level, D3DSURFACE_DESC *desc);
 } }

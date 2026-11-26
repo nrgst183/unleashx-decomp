@@ -10,6 +10,31 @@
 #include "../settings/AppSettings.h"
 #include "Network.h"
 
+// (Fix: m_connections is changed by the listen thread (AddConnection), by
+// each connection thread as it ends (RemoveConnection) and by Stop(), which
+// the original did with no lock, so a client leaving while another connected
+// could corrupt the list.)
+#ifdef _XBOX
+static RTL_CRITICAL_SECTION s_connectionsLock;
+static struct ConnectionsLockInit
+{
+	ConnectionsLockInit() { RtlInitializeCriticalSection(&s_connectionsLock); }
+} s_connectionsLockInit;
+struct ConnectionsGuard
+{
+	ConnectionsGuard() { RtlEnterCriticalSection(&s_connectionsLock); }
+	~ConnectionsGuard() { RtlLeaveCriticalSection(&s_connectionsLock); }
+};
+#else
+#include <mutex>
+static std::recursive_mutex s_connectionsLock;
+struct ConnectionsGuard
+{
+	std::lock_guard<std::recursive_mutex> guard{s_connectionsLock};
+};
+#endif
+
+// (After the lock, so that it's set up before and torn down after the server.)
 BYTE g_bFtpEnabled = TRUE;
 CFTPServer g_ftpServer;
 
@@ -75,6 +100,7 @@ CFTPServer::~CFTPServer()
 
 	// 0x0002F967. Quirk: advances two nodes for each one it removes, so every
 	// other connection stays in the list (and is never released).
+	ConnectionsGuard guard;
 	std::list<CFTPConnection *>::iterator it = m_connections.begin();
 	while (it != m_connections.end())
 	{
@@ -150,7 +176,7 @@ void CFTPServer::SetSyst(const char *syst)
 	if (syst == NULL || syst[0] == '\0')
 		return;
 
-	m_strSyst = _strdup(syst);   // Quirk: the copy is never freed
+	m_strSyst = syst;   // (fix: the original leaked a _strdup copy)
 	if (StrLeft(m_strSyst, 5) != "UNIX ")
 	{
 		StrFormat(m_strSyst, "UNIX / UX %s", syst);
@@ -238,6 +264,7 @@ BOOL CFTPServer::AddConnection(CFTPConnection *connection)
 	if (connection == NULL)
 		return FALSE;
 	connection->AddRef();
+	ConnectionsGuard guard;
 	m_connections.push_back(connection);
 	return TRUE;
 }
@@ -245,6 +272,7 @@ BOOL CFTPServer::AddConnection(CFTPConnection *connection)
 // 0x0002F9CC
 CFTPConnection *CFTPServer::RemoveConnection(HANDLE thread, BOOL keep)
 {
+	ConnectionsGuard guard;
 	for (std::list<CFTPConnection *>::iterator it = m_connections.begin(); it != m_connections.end(); ++it)
 	{
 		if ((*it)->m_hThread == thread)
@@ -430,6 +458,7 @@ void CFTPServer::Stop()
 	Sleep(500);
 
 	// The connection threads notice this after their current command.
+	ConnectionsGuard guard;
 	for (std::list<CFTPConnection *>::iterator it = m_connections.begin(); it != m_connections.end(); ++it)
 		(*it)->m_bConnected = FALSE;
 
@@ -515,7 +544,7 @@ unsigned CFTPServer::ListenThreadProc()
 					{
 						if (nickname.size() == 0)
 						{
-							wchar_t name[0x20];
+							wchar_t name[0x20] = { 0 };   // (fix: was read uninitialized with no nickname set)
 							HANDLE find = XFindFirstNicknameW(FALSE, name, 0x20);
 							if (find != INVALID_HANDLE_VALUE)
 								CloseHandle(find);

@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "../common/FrameTime.h"
 #include "../app/MenuItemEditor.h"
 #include "../app/Screens.h"
 #include "../app/UnleashX.h"
@@ -406,8 +407,9 @@ void CMenu::LoadList(CXmlElement *list)
 		m_nLastVisible = m_nVisibleItems - 1 + m_nFirstVisible;
 	}
 
-	// Load the icons of the first screenful now, the rest later.
-	Sleep(100);
+	// Load the icons of the first screenful now, the rest later. (Fix: a
+	// yield, not 100 ms: the original made every list open wait that long.)
+	Sleep(1);
 	for (unsigned i = 0; i < m_items.size() && (int)i <= m_nVisibleItems; i++)
 	{
 		CMenuItem *item = m_items[i];
@@ -645,6 +647,9 @@ void CMenu::OpenList(CXmlElement *list)
 		delete item;
 	}
 	m_items.clear();
+	// (Fix: the icons only the closed list used are let go; the original kept
+	// every icon ever shown until the menu went.)
+	PruneIconCache();
 
 	HANDLE thread = (HANDLE)_beginthreadex(NULL, 0, LoadListThread, this, CREATE_SUSPENDED, NULL);
 	if (thread == NULL)
@@ -845,9 +850,12 @@ BOOL CMenu::RunItem(CXmlElement *item, BOOL isList)
 	{
 		// Opens the keyboard; the next item of a batch (or the caller) uses
 		// the text as $KBResult$.
-		wchar_t title[50];
+		// (Fix: terminated, with room for it; the original's conversions
+		// left the buffer unterminated, and uninitialized before them.)
+		wchar_t title[51];
 		text = GetDialogCaption(item);
-		MultiByteToWideChar(CP_ACP, 0, text.c_str(), (int)text.size(), title, 50);
+		memset(title, 0, sizeof(title));
+		MultiByteToWideChar(CP_ACP, 0, text.c_str(), text.size() < 50 ? (int)text.size() : 50, title, 50);
 		text = GetDialogText(item, TRUE);
 		g_virtualKeyboard.SetTitle(title);
 		g_virtualKeyboard.Open();
@@ -855,7 +863,8 @@ BOOL CMenu::RunItem(CXmlElement *item, BOOL isList)
 		g_virtualKeyboard.m_nMaxLength = 64;
 		if (text.size() != 0)
 		{
-			MultiByteToWideChar(CP_ACP, 0, text.c_str(), (int)text.size(), title, 50);
+			memset(title, 0, sizeof(title));
+			MultiByteToWideChar(CP_ACP, 0, text.c_str(), text.size() < 50 ? (int)text.size() : 50, title, 50);
 			g_virtualKeyboard.SetText(title);
 		}
 		m_bWaitingForKeyboard = TRUE;
@@ -913,8 +922,15 @@ void CMenu::OpenRecentList()
 				SRecentItem *recent = &m_recent[i];
 				if (recent->path[0] == 0)
 					continue;
-				wchar_t name[0x2A];
-				MultiByteToWideChar(CP_ACP, 0, recent->name, (int)strlen(recent->name), name, 0x2A);
+				// (Fix: recent.dat is read raw, so the name is bounded by its
+				// field and the result terminated.)
+				wchar_t name[sizeof(recent->name) + 1];
+				memset(name, 0, sizeof(name));
+				size_t length = 0;
+				while (length < sizeof(recent->name) && recent->name[length] != 0)
+					length++;
+				if (length != 0)
+					MultiByteToWideChar(CP_ACP, 0, recent->name, (int)length, name, (int)sizeof(recent->name));
 				m_pRecentMenu->AddOption(name, 0);
 				count++;
 			}
@@ -959,7 +975,7 @@ BOOL CMenu::CaptureBootImage()
 		m_pBootTexture = NULL;
 	}
 	m_pBootSurface = NULL;
-	IDirect3DSurface8 *saved = AvGetSavedDataAddress();
+	IDirect3DSurface8 *saved = (IDirect3DSurface8 *)AvGetSavedDataAddress();
 	if (saved != NULL)
 	{
 		D3DSURFACE_DESC desc;
@@ -1124,19 +1140,21 @@ static void UnlockPendingItem(CXmlElement *element)
 	s_strPassword.clear();
 }
 
-// Starts the smooth scroll animation (direction -1 up, 1 down). The speed
-// follows the frame rate.
+// Starts the smooth scroll animation (direction -1 up, 1 down).
+// (Fix: the original scaled the start by the frame rate (1200 / fps for the
+// list, fps * 1.2 for skin item positions) and counted it down a step a
+// frame, which only came out right at 60 fps, and with the list's the wrong
+// way round. It now starts at its 60 fps value and counts down by time.)
 void CMenu::StartScroll(int direction)
 {
 	if (!m_bSmoothScroll)
 		return;
 	m_nScrollDirection = direction;
 	m_dwScrollStart = GetTickCount();
-	float fps = g_fFrameRate < 50.0f ? 50.0f : g_fFrameRate;
 	if (m_nSkinVisibleItems == 0 || m_pItemPositions == NULL)
-		m_fScrollSpeed = 1200.0f / fps;
+		m_fScrollSpeed = 1200.0f / FRAME_TUNED_HZ;
 	else
-		m_fScrollSpeed = fps * 1.2f;
+		m_fScrollSpeed = FRAME_TUNED_HZ * 1.2f;
 	m_fScrollRemaining = m_fScrollSpeed;
 }
 

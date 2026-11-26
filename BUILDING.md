@@ -4,7 +4,89 @@ The result is a new `Default.xbe` built from `src/`: it behaves like
 UnleashX 0.39.0528A but is not a byte-for-byte copy of the original (see
 the [README](README.md)).
 
-## What you need
+There are two ways to build it:
+
+* **[With RXDK](#with-rxdk)**, Team Resurgent's open Xbox SDK and its clang
+  toolchain. Nothing of Microsoft's is needed, and it runs natively on
+  Windows, Linux and macOS.
+* **[With the XDK](#with-the-xdk)** 5933, Microsoft's SDK and compiler (what
+  UnleashX itself was built with).
+
+There's also **[a Windows build](#for-windows)**: the same code as a native
+Windows program, with the Xbox's drives as folders on the PC.
+
+## With RXDK
+
+[RXDK](https://github.com/Team-Resurgent/RXDK-VS20XX) replaces the XDK with
+open libraries (picolibc, libc++, xAPI, D3D8, DirectSound, XNet, XMV) built
+with a clang/LLVM toolchain for the Xbox's Pentium III.
+
+### What you need
+
+* **Visual Studio 2022 or 2026** with the
+  [RXDK extension](https://github.com/Team-Resurgent/RXDK-VS20XX/releases/latest):
+  open the RXDK tool window and click **Install Prerequisites**, which puts
+  the SDK, the LLVM toolchain and the host tools (imagebld) in
+  `%ProgramData%\RXDK`.
+* **Or, for make** (Linux, macOS, or MSYS2/Git Bash on Windows): the same three
+  pieces in `$RXDK` (`~/.local/share/rxdk` on Linux,
+  `~/Library/Application Support/RXDK` on macOS, `%ProgramData%\RXDK` on
+  Windows; the RXDK VS Code extension installs them there too), or by hand:
+  * `sdk/`: [RXDK-SDK](https://github.com/Team-Resurgent/RXDK-SDK) (tested with v1.3.12);
+  * `llvm/xbox-<os>-<arch>/`: the toolchain, `xbox-<os>-<arch>.zip` from
+    [Team-Resurgent/llvm-project's releases](https://github.com/Team-Resurgent/llvm-project/releases);
+  * `tools/imagebld`: from [RXDK-Tools](https://github.com/Team-Resurgent/RXDK-Tools)
+    (`src/Rxdk.ImageBld`, .NET 8).
+
+  `RXDK_SDK=`, `RXDK_LLVM=` and `IMAGEBLD=` point at each one elsewhere.
+* **Python 3**, for make's last step (`tools/xbe.py retail`). Visual Studio
+  doesn't need it: its project does that step itself (an inline MSBuild
+  task).
+
+### Visual Studio
+
+Open `rxdk/UnleashX.sln` and build **Release|Xbox**. The output is in
+`build\vs-rxdk\Release\`: `default.xbe` (rescrambled for retail kernels right
+after imagebld) and the disc image in
+`XISO\`. The project is generated from Makefile.rxdk's lists and flags by
+`python tools/gen_vcxproj_rxdk.py`; rerun that after adding or removing
+files.
+
+### make
+
+```sh
+make -f Makefile.rxdk info          # check what it found
+make -f Makefile.rxdk -j8 xiso      # build/rxdk/default.xbe and UnleashX.iso
+make -f Makefile.rxdk -j8 exe       # just the linked default.exe (no imagebld needed)
+make -f Makefile.rxdk DEBUG=1 -j8   # -O0 -g against the SDK's debug libraries
+```
+
+Outputs, in `build/rxdk/`: the same files as the XDK build below
+(`default.xbe`, `debug.xbe`, `UnleashX.iso`, `default.map`, the per-file
+`obj/**/*.log`). After linking, `tools/rxdk_check.py` checks the executable:
+the C++ unwind tables are where libc++ looks for them, and no SSE2
+instruction (which the Xbox's CPU doesn't have) made it in.
+
+### How the RXDK build differs
+
+The code is the same; `UX_RXDK` selects the few places where RXDK differs
+from the XDK (`src/common/PlatformRxdk.h`, `xbox/RxdkCompat.cpp`,
+`xbox/rxdk/`):
+
+* **`new` returns NULL** when memory runs out, as MSVC 7.1's did (libc++'s
+  throws, and UnleashX checks for NULL and catches nothing), compiled with
+  `-fcheck-new` so clang keeps those checks.
+* **`-fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks`**: MSVC
+  7.1 never optimized on these, and the decompiled code relies on that.
+* **Wide `printf` formats** keep MSVC's meaning (`%s` in `swprintf` is a wide
+  string): RXDK's libc translates them.
+* RXDK's XACT has no file I/O hook; UnleashX's was a no-op.
+* `.wmv` videos don't play (the WMV decoder was only ever in XDK 4xxx);
+  `.xmv` does.
+
+## With the XDK
+
+### What you need
 
 * **The Xbox XDK**, build 5933 (the one UnleashX was built with; nearby 5xxx
   builds should work too: the XDK 5788 headers and libraries also build
@@ -30,7 +112,7 @@ the [README](README.md)).
 
 Everything else is in the repository.
 
-## Linux and macOS
+### Linux and macOS
 
 ```sh
 make -f Makefile.xbox XDK=/path/to/xdk info     # check what it found
@@ -57,7 +139,7 @@ Outputs, in `build/xbox/`:
 A full build takes a minute or two (`-j4`). The first time, Wine may set up
 its prefix, which takes a little longer.
 
-## Windows
+### Windows
 
 **Visual Studio .NET 2003**: open `vs2003/UnleashX.sln` and build the
 Release configuration. The XDK's Visual Studio integration provides the Xbox
@@ -79,6 +161,56 @@ mklink /J xdk "C:\Program Files\Microsoft Xbox SDK"
 ```
 
 and then just `make -f Makefile.xbox -j4 xiso`.
+
+## For Windows
+
+The dash compiled for the PC: a 32-bit Windows program that runs UnleashX's
+own code, with the Xbox APIs it calls provided by `xbox/win32/` (Direct3D 8
+on Direct3D 9, XInput, the sound on waveOut, the drives as folders, the
+network on Winsock). It's for working on the dash without a console or an
+emulator, and for fun; it doesn't replace either.
+
+**Visual Studio 2022** (or later, with "Desktop development with C++"): open
+`win32/UnleashX.sln`, pick `Release` and `x86`, and build. The program is
+`build\vs-win32\Release\UnleashX.exe`, with UnleashX's own files in `disc\`
+next to it. Nothing else is needed (not Python, not the DirectX SDK).
+
+**make**, with [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) (on
+Linux, macOS, or Windows with MSYS2): `make -f Makefile.win32 -j8` builds
+`build/win32/UnleashX.exe` the same way; `make -f Makefile.win32 run` runs it
+(with Wine, off Windows).
+
+After adding or removing source files, `python3 tools/gen_vcxproj_win32.py`
+regenerates the Visual Studio project from `Makefile.win32`.
+
+### Running it
+
+The Xbox's drives are folders in `XboxHDD\` next to the program (or in the
+folder `UNLEASHX_XBOX_ROOT` names): `C`, `E`, `F`, `G`, `X`, `Y`, `Z` for the
+hard disk's partitions and `DVD` for the disc drive. The first start puts
+UnleashX's files in `E\Apps\UnleashX` (from `disc\`, without overwriting
+anything) and runs from there, as if launched from `E:\Apps\UnleashX`.
+What the console keeps in its EEPROM (language, video settings...) goes in
+`XboxHDD\eeprom.txt`, and what happens (drive mappings, launches, crashes) in
+`UnleashX.log` next to the program.
+
+Controllers work through XInput (an Xbox 360 or One pad: LB is white, RB
+black). The keyboard is the Xbox's debug keyboard, which UnleashX supports
+itself (arrows, Enter, Esc, typing), plus the first controller's buttons:
+
+| Key | Button | Key | Button |
+|---|---|---|---|
+| F1 | A | F5 | White |
+| F2 | B | F6 | Black |
+| F3 | X | Page Up / Page Down | Left / right trigger |
+| F4 | Y | Tab / F9 | Back / Start |
+
+Alt+Enter switches between a window and the full screen.
+
+What doesn't work on a PC: launching Xbox programs (it says so; a game or
+app "launched" restarts the dash), flashing, locking the hard disk, memory
+units, soundtracks and WMA music (MP3 plays), XMV/WMV videos, TrueType skin
+fonts, and anything the dash draws into a texture rather than the screen.
 
 ## Running it
 

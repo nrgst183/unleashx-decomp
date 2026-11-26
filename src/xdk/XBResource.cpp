@@ -45,15 +45,39 @@ CXBPackedResource::~CXBPackedResource()
 }
 
 // XPR1 files carry their own tag table at the start of the system-memory
-// part, with offsets to make into pointers.
-static void FixupTags(CXBPackedResource *resource)
+// part, with offsets to make into pointers. (Fix: FALSE when the table or a
+// name or resource offset falls outside the data; the original trusted all
+// of them, and the image viewer opens any .xpr.)
+static BOOL FixupTags(CXBPackedResource *resource, DWORD sysSize)
 {
+	if (sysSize < 4)
+		return FALSE;
 	DWORD *data = (DWORD *)resource->m_pSysMemData;
-	resource->m_dwNumResourceTags = data[0];
-	resource->m_pResourceTags = data + 1;
-	XBRESOURCE *tags = (XBRESOURCE *)resource->m_pResourceTags;
-	for (DWORD i = 0; i < resource->m_dwNumResourceTags; i++)
-		tags[i].strName += (DWORD)resource->m_pSysMemData;
+	DWORD count = data[0];
+	if (count > (sysSize - 4) / sizeof(XBRESOURCE))
+		return FALSE;
+	XBRESOURCE *tags = (XBRESOURCE *)(data + 1);
+	for (DWORD i = 0; i < count; i++)
+	{
+		DWORD name = (DWORD)(uintptr_t)tags[i].strName;
+		if (name >= sysSize || memchr(resource->m_pSysMemData + name, 0, sysSize - name) == NULL ||
+		    tags[i].dwOffset >= sysSize)
+			return FALSE;
+	}
+	resource->m_dwNumResourceTags = count;
+	resource->m_pResourceTags = tags;
+	for (DWORD i = 0; i < count; i++)
+		tags[i].strName += (DWORD)(uintptr_t)resource->m_pSysMemData;
+	return TRUE;
+}
+
+// An XPR header's sizes, when they make sense. (Fix: the original took them
+// as they came, so a header size under 12 made the system-memory size wrap.)
+#define XPR_MAX_SIZE 0x4000000
+static BOOL XprSizesValid(const XPR_HEADER &header)
+{
+	return header.dwHeaderSize >= sizeof(XPR_HEADER) && header.dwTotalSize >= header.dwHeaderSize &&
+	       header.dwTotalSize <= XPR_MAX_SIZE;
 }
 
 // 0x0009714B
@@ -67,7 +91,8 @@ HRESULT CXBPackedResource::Create(const char *fileName, DWORD numResourceTags, v
 	if (file == INVALID_HANDLE_VALUE)
 		return E_FAIL;
 	XPR_HEADER header;
-	DWORD read;
+	DWORD read = 0;
+	memset(&header, 0, sizeof(header));
 	ReadFile(file, &header, sizeof(header), &read, NULL);
 	BOOL xpr1;
 	if (header.dwMagic == XPR0_MAGIC_VALUE)
@@ -79,15 +104,29 @@ HRESULT CXBPackedResource::Create(const char *fileName, DWORD numResourceTags, v
 		CloseHandle(file);
 		return E_INVALIDARG;
 	}
+	if (read != sizeof(header) || !XprSizesValid(header))
+	{
+		CloseHandle(file);
+		return E_INVALIDARG;
+	}
 	m_dwSysMemDataSize = header.dwHeaderSize - sizeof(header);
 	m_dwVidMemDataSize = header.dwTotalSize - header.dwHeaderSize;
-	m_pSysMemData = new BYTE[m_dwSysMemDataSize];
+	m_pSysMemData = new BYTE[m_dwSysMemDataSize + 1];   // (+1: never a zero-size array)
 	m_pVidMemData = (BYTE *)D3D_AllocContiguousMemory(m_dwVidMemDataSize, D3DTEXTURE_ALIGNMENT);
+	if (m_pSysMemData == NULL || (m_pVidMemData == NULL && m_dwVidMemDataSize != 0))
+	{
+		CloseHandle(file);
+		Destroy();
+		return E_OUTOFMEMORY;
+	}
 	ReadFile(file, m_pSysMemData, m_dwSysMemDataSize, &read, NULL);
 	ReadFile(file, m_pVidMemData, m_dwVidMemDataSize, &read, NULL);
 	CloseHandle(file);
-	if (xpr1)
-		FixupTags(this);
+	if (xpr1 && !FixupTags(this, m_dwSysMemDataSize))
+	{
+		Destroy();
+		return E_INVALIDARG;
+	}
 	if (numResourceTags != 0 || resourceTags != NULL)
 	{
 		m_pResourceTags = resourceTags;
@@ -109,15 +148,25 @@ HRESULT CXBPackedResource::CreateFromMemory(const void *xpr, DWORD numResourceTa
 		xpr1 = TRUE;
 	else
 		return E_INVALIDARG;
+	if (!XprSizesValid(*header))
+		return E_INVALIDARG;
 	// Quirk: the sizes are used but not stored.
 	DWORD sysSize = header->dwHeaderSize - sizeof(XPR_HEADER);
 	DWORD vidSize = header->dwTotalSize - header->dwHeaderSize;
-	m_pSysMemData = new BYTE[sysSize];
+	m_pSysMemData = new BYTE[sysSize + 1];
 	m_pVidMemData = (BYTE *)D3D_AllocContiguousMemory(vidSize, D3DTEXTURE_ALIGNMENT);
+	if (m_pSysMemData == NULL || (m_pVidMemData == NULL && vidSize != 0))
+	{
+		Destroy();
+		return E_OUTOFMEMORY;
+	}
 	memcpy(m_pSysMemData, (const BYTE *)xpr + sizeof(XPR_HEADER), sysSize);
 	memcpy(m_pVidMemData, (const BYTE *)xpr + sizeof(XPR_HEADER) + sysSize, vidSize);
-	if (xpr1)
-		FixupTags(this);
+	if (xpr1 && !FixupTags(this, sysSize))
+	{
+		Destroy();
+		return E_INVALIDARG;
+	}
 	if (numResourceTags != 0 || resourceTags != NULL)
 	{
 		m_pResourceTags = resourceTags;

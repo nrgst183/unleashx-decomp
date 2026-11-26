@@ -4,6 +4,7 @@
 
 #include <cwchar>
 
+#include "../common/FrameTime.h"
 #include "../audio/Sound.h"
 #include "../audio/SoundEffects.h"
 #include "../input/Gamepad.h"
@@ -224,7 +225,7 @@ HRESULT CUpDown::Render()
 	if (m_bFocused)
 	{
 		// The arrows: the one last used fully lit, the other pulsing.
-		s_fArrowAlpha = s_fArrowStep * 0.025f + s_fArrowAlpha;
+		s_fArrowAlpha = s_fArrowStep * FrameStep(0.025f) + s_fArrowAlpha;   // (fix: by time)
 		float arrowX = (GetBoxWidth() - m_fArrowWidth) * 0.5f + m_fX;
 		float alpha = m_nLastMove == 1 ? 1.0f : s_fArrowAlpha;
 		DrawTriangle(arrowX, m_fY + 4.0f, m_fArrowWidth, m_fArrowHeight, 1, g_colorScheme.DIALOG_INNER_BORDERCOLOR,

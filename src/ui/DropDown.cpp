@@ -4,6 +4,7 @@
 #include <cwchar>
 
 #include "../audio/Sound.h"
+#include "../common/FrameTime.h"
 #include "../audio/SoundEffects.h"
 #include "../input/Gamepad.h"
 #include "../render/Draw.h"
@@ -325,7 +326,7 @@ HRESULT CDropDown::Render()
 	{
 		DrawRect(m_fX, m_fY, m_fWidth, m_fHeight - s_fSlideOffset, g_colorScheme.DIALOG_BORDERCOLOR,
 		         g_colorScheme.DIALOG_BACKCOLOR, 1.0f, 1);
-		s_fSlideOffset -= DROPDOWN_SLIDE_STEP;
+		s_fSlideOffset -= FrameStep(DROPDOWN_SLIDE_STEP);   // (fix: a step per 60 Hz frame, not per frame)
 		if (s_fSlideOffset <= 0.0f)
 		{
 			s_fSlideOffset = m_fHeight;

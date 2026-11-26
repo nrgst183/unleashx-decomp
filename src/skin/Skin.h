@@ -274,7 +274,9 @@ public:
 	HRESULT RenderSorted();                           // 0x00100948
 
 	std::string ResolveFile(const char *path);        // 0x000F9DFC
-	HRESULT FindFont(const char *name, CXBFont **font);   // 0x000F9A08
+	// namedOnly: a font from the tables only, never one loaded from a file
+	// name (which the table makes as a plain CXBFont).
+	HRESULT FindFont(const char *name, CXBFont **font, BOOL namedOnly = FALSE);   // 0x000F9A08
 
 	void ParseTexts(CXmlElement *parent, const char *tag, std::vector<SSkinText> &texts,
 	                std::vector<SSkinDrawItem> *order);    // 0x000FAE12

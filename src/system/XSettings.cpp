@@ -145,6 +145,12 @@ static const BYTE s_queryPatch[0x46] = {
 
 static BYTE *FindKernelCode(const BYTE *code, size_t length)
 {
+#ifdef UX_WIN32
+	// (Windows: there's no Xbox kernel in the address space to patch.)
+	(void)code;
+	(void)length;
+	return NULL;
+#endif
 	for (size_t address = KERNEL_SEARCH_START; address < KERNEL_SEARCH_END; address++)
 	{
 		const BYTE *p = (const BYTE *)address;

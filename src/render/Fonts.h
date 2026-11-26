@@ -153,6 +153,8 @@ public:
 	// Not in the table: an existing file of that name is loaded as a
 	// bitmap font and added. (font in edi)
 	HRESULT Find(const char *name, CXBFont **font);                    // 0x00138089
+	// The font registered under name, or NULL (Find also loads a file name).
+	CXBFont *FindNamed(const char *name) { return FindFont(name); }
 	// Replaces the font of that name (destroying the old one if owned),
 	// or adds it. E_FAIL for no font.
 	HRESULT Add(const char *name, CXBFont *font, BOOL owned);          // 0x00137FF6

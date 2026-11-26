@@ -40,7 +40,40 @@ static const char *LookupLanguageKey(const char *key)
 	return element->m_strValue.c_str();
 }
 
+// The printf conversions in a string ("%d", "%s", ...), in order, with
+// their length modifiers; "%%" isn't one.
+static std::string FormatSignature(const char *s)
+{
+	std::string sig;
+	for (; *s != '\0'; s++)
+	{
+		if (*s != '%')
+			continue;
+		s++;
+		if (*s == '%')
+			continue;
+		while (*s != '\0' && strchr("-+ #0123456789.*", *s) != NULL)
+			s++;
+		while (*s != '\0' && strchr("hlLqjztI", *s) != NULL)
+			sig += *s++;
+		if (*s == '\0')
+		{
+			sig += '?';
+			break;
+		}
+		sig += *s;
+		sig += ',';
+	}
+	return sig;
+}
+
 // 0x0013A679
+// (Fix: a translation is only used when its printf conversions are the
+// built-in text's, or the first of them; printf ignores arguments left over.
+// Several strings are used as formats, and a language file's "%s" where the
+// code passes a number read wild memory, its "%n" wrote it. Of the shipped
+// files' translations this sets aside the few that already didn't match
+// their arguments, such as MSG_FORMAT_DRIVE_ASK's "%c" given a string.)
 const char *GetDefaultString(int id)
 {
 	for (size_t i = 0; i < sizeof(kStrings) / sizeof(kStrings[0]); i++)
@@ -49,7 +82,11 @@ const char *GetDefaultString(int id)
 			continue;
 		const char *text = LookupLanguageKey(kStrings[i].key);
 		if (text != NULL && strlen(text) != 0)
-			return text;
+		{
+			std::string mine = FormatSignature(text), builtIn = FormatSignature(kStrings[i].text);
+			if (builtIn.compare(0, mine.size(), mine) == 0)
+				return text;
+		}
 		return kStrings[i].text;
 	}
 	return " ";

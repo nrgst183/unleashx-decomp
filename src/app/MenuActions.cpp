@@ -33,8 +33,8 @@ DWORD g_dwShutdownDeadline;               // 0x00276238
 // Maps D: to the XBE's folder and starts it; returns only on failure.
 // Starts the network from the settings on a thread (unless one is running).
 
-#ifndef _XBOX
-static void WritePort(WORD, BYTE) {}
+#if !defined(_XBOX) || defined(UX_WIN32)
+static void WritePort(WORD, BYTE) {}   // (no Xbox hardware to poke on a PC)
 #else
 static void WritePort(WORD port, BYTE value)
 {
@@ -145,7 +145,8 @@ BOOL LaunchXbe(const char *path, const char *name, int region, const char *args)
 	SXbeInfo info;
 	info.titleId = 0;
 	info.gameRegion = 0;
-	std::string title = name;
+	// (The file manager passes no name: read it from the XBE below.)
+	std::string title = name != NULL ? name : "";
 
 	// <Preference AutoVideoMode>: read the game's region (and a missing
 	// name) from the XBE.

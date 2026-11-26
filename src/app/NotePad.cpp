@@ -423,8 +423,8 @@ void CNotePad::AskFileName(const wchar_t *title, const char *path)
 	}
 	if (name.size() != 0)
 	{
-		wchar_t text[262];
-		// Quirk: the converted name isn't NUL-terminated.
+		// (Fix: zeroed, since the conversion doesn't NUL-terminate the name.)
+		wchar_t text[262] = { 0 };
 		MultiByteToWideChar(CP_ACP, 0, name.c_str(), (int)name.size(), text, 0x104);
 		g_virtualKeyboard.SetText(text);
 	}
@@ -652,15 +652,31 @@ BOOL CNotePad::Render()
 		if (m_nCol > NOTEPAD_SCROLL_COLUMN)
 		{
 			// Scroll right until the text up to the cursor fits, then cut
-			// what's left to the width.
-			int count = (int)m_nCol;
-			while (m_pFont->GetTextWidth(current.substr(firstCol, count).c_str()) > s_fTextWidth - 20.0f)
+			// what's left to the width. (Fix: worked out again only when the
+			// line, the cursor or the font's scale changed; the original
+			// measured a substring per column every frame.)
+			static std::wstring s_strLine;
+			static UINT s_nCol = (UINT)-1;
+			static float s_fScale;
+			static int s_nFirstCol, s_nLastCol;
+			if (s_nCol != m_nCol || s_fScale != m_pFont->m_fScaleFactorX || s_strLine != current)
 			{
-				firstCol++;
-				count--;
+				int count = (int)m_nCol;
+				while (m_pFont->GetTextWidth(current.substr(firstCol, count).c_str()) > s_fTextWidth - 20.0f)
+				{
+					firstCol++;
+					count--;
+				}
+				while (m_pFont->GetTextWidth(current.substr(firstCol, lastCol).c_str()) > s_fTextWidth - 5.0f)
+					lastCol--;
+				s_strLine = current;
+				s_nCol = m_nCol;
+				s_fScale = m_pFont->m_fScaleFactorX;
+				s_nFirstCol = firstCol;
+				s_nLastCol = lastCol;
 			}
-			while (m_pFont->GetTextWidth(current.substr(firstCol, lastCol).c_str()) > s_fTextWidth - 5.0f)
-				lastCol--;
+			firstCol = s_nFirstCol;
+			lastCol = s_nLastCol;
 		}
 
 		SetScissorRect(TRUE, m_fX + 1.0f, m_fY + 1.0f, m_fWidth - 1.0f, (bottom - m_fY) - 1.0f);
@@ -691,14 +707,9 @@ BOOL CNotePad::Render()
 	{
 		float cursorX = x;
 		float offset = 0.0f;
-		if (m_nCol == 0)
-		{
-			// Quirk: trims lastCol for nothing.
-			if (current.size() != 0)
-				while (m_pFont->GetTextWidth(current.substr(0, lastCol).c_str()) > s_fTextWidth - 5.0f)
-					lastCol--;
-		}
-		else if (lastCol != 0)
+		// (The original also trimmed lastCol here, at column 0, for nothing:
+		// a substring measured per column every frame. It's gone.)
+		if (m_nCol != 0 && lastCol != 0)
 		{
 			std::wstring before = current.substr(firstCol, lastCol).substr(0, m_nCol - firstCol);
 			float height;

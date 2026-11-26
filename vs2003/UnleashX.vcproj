@@ -320,8 +320,10 @@
 			</File>
 			<File RelativePath="..\src\common\Base64.h"/>
 			<File RelativePath="..\src\common\FileUtil.h"/>
+			<File RelativePath="..\src\common\FrameTime.h"/>
 			<File RelativePath="..\src\common\ObList.h"/>
 			<File RelativePath="..\src\common\Platform.h"/>
+			<File RelativePath="..\src\common\PlatformRxdk.h"/>
 			<File RelativePath="..\src\common\StdObject.h"/>
 			<File RelativePath="..\src\common\StrUtil.h"/>
 			<File RelativePath="..\src\common\Thread.h"/>
@@ -917,6 +919,11 @@
 			<File RelativePath="..\xbox\Iso9660.cpp">
 				<FileConfiguration Name="Release|Xbox">
 					<Tool Name="VCCLCompilerTool" ObjectFile="$(IntDir)/xbox_Iso9660.obj"/>
+				</FileConfiguration>
+			</File>
+			<File RelativePath="..\xbox\RxdkCompat.cpp">
+				<FileConfiguration Name="Release|Xbox">
+					<Tool Name="VCCLCompilerTool" ObjectFile="$(IntDir)/xbox_RxdkCompat.obj"/>
 				</FileConfiguration>
 			</File>
 			<File RelativePath="..\xbox\Trace.cpp">

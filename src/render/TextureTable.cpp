@@ -23,9 +23,11 @@ STextureEntry::STextureEntry(const char *name, IDirect3DTexture8 *texture, BOOL 
 		this->texture = texture;
 	}
 	this->name[0] = '\0';
-	// (Not terminated when the name is 255 characters or more.)
+	// (Fix: terminated when the name is 255 characters or more; skins name
+	// fonts and textures.)
 	if (name != NULL && strlen(name) != 0)
 		strncpy(this->name, name, 0xFF);
+	this->name[0xFF] = '\0';
 	if (this->texture == NULL && strlen(this->name) != 0)
 	{
 		if (D3DXCreateTextureFromFileA(g_pd3dDevice, name, &this->texture) == S_OK)
@@ -102,11 +104,11 @@ HRESULT CTextureTable::Add(const char *name, IDirect3DTexture8 *texture, BOOL ow
 	STextureEntry *entry = FindEntry(name);
 	if (entry != NULL)
 	{
-		// Quirk: an owned texture is freed with operator delete instead of
-		// being released, and the new one isn't AddRef'd (unlike when it's
-		// added).
-		if (entry->owned)
-			operator delete(entry->texture);
+		// Quirk: the new one isn't AddRef'd (unlike when it's added). (Fix:
+		// an owned texture, D3DX's, was freed with operator delete instead
+		// of being released.)
+		if (entry->owned && entry->texture != NULL)
+			entry->texture->Release();
 		entry->owned = owned;
 		entry->texture = texture;
 		return S_OK;

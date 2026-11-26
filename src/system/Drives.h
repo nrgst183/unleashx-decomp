@@ -83,6 +83,17 @@ HRESULT FormatDrive(char drive);                          // 0x000A956B (Storage
 
 // total/free/used bytes of a drive, each divided by unit.
 void GetDiskSpace(char drive, ULONGLONG *total, ULONGLONG *free, ULONGLONG *used, int unit);   // 0x0009D6A3
+// GetDiskSpace into a drive slot. SDriveInfo is packed, so its 64-bit fields
+// are misaligned and their addresses can't be passed as ULONGLONG * (the
+// original did; MSVC never assumed the alignment, clang may).
+inline void GetDiskSpace(char drive, SDriveInfo *info, int unit)
+{
+	ULONGLONG total, free, used;
+	GetDiskSpace(drive, &total, &free, &used, unit);
+	info->totalBytes = total;
+	info->freeBytes = free;
+	info->usedBytes = used;
+}
 
 // F: and G: are optional (EnableDriveF/EnableDriveG).
 extern BOOL g_bDriveFMapped;       // 0x0026BBF4

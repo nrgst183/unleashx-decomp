@@ -7,6 +7,7 @@
 #include "../common/StrUtil.h"
 #include "../render/D3D.h"
 #include "../render/Texture.h"
+#include "../xml/XmlDocument.h"
 
 // Icons by lowercased path, shared by all menu items. Each entry holds one
 // reference.
@@ -31,6 +32,15 @@ CMenuItem::CMenuItem(const char *text, const char *iconPath, BOOL isList)
 		StrUtf8ToWide(text, m_pszText, (unsigned)len);
 		// The original strdup()s the path to lowercase it and never frees it.
 		m_strIcon = iconPath == NULL ? std::string("") : StrToLower(iconPath);
+	}
+	// (Fix: an item without text gets an empty one. The menu reads the text
+	// unconditionally, so a text-less item, such as an <Item> with no value
+	// or a scanned XBE with no title, crashed it.)
+	if (m_pszText == NULL)
+	{
+		m_pszText = new wchar_t[1];
+		if (m_pszText != NULL)
+			m_pszText[0] = 0;
 	}
 	m_bIsList = isList;
 }
@@ -85,11 +95,35 @@ static BOOL LoadXbxIcon(HANDLE file, IDirect3DTexture8 **texture)
 		return TRUE;   // handled, but no texture
 
 	D3DLOCKED_RECT locked;
+	locked.pBits = NULL;
 	(*texture)->LockRect(0, &locked, NULL, D3DLOCK_READONLY);
 	SetFilePointer(file, 0x800, NULL, FILE_BEGIN);
 	DWORD dataSize = header.xpr.dwTotalSize - header.xpr.dwHeaderSize;
-	if (!ReadFile(file, locked.pBits, dataSize, &read, NULL) || read != dataSize)
+	// (Fix: the file's size is checked against the texture before the read.)
+	if (header.xpr.dwTotalSize < header.xpr.dwHeaderSize || !XprTextureDataFits(*texture, locked, &dataSize) ||
+	    !ReadFile(file, locked.pBits, dataSize, &read, NULL) || read != dataSize)
 		*texture = NULL;   // sic: the texture is leaked
+	return TRUE;
+}
+
+// An icon path the XBE scan made: <drive>:\udata\<title id>\titleimage.xbx,
+// or z:\media\<title id>.xbx when running from DVD. (Lowercase.)
+static BOOL IsTitleImageCachePath(const std::string &path)
+{
+	const char *p = path.c_str();
+	const char *hex;
+	if (path.size() == 32 && p[1] == ':' && strncmp(p + 2, "\\udata\\", 7) == 0 &&
+	    strcmp(p + 17, "\\titleimage.xbx") == 0)
+		hex = p + 9;
+	else if (path.size() == 21 && strncmp(p, "z:\\media\\", 9) == 0 && strcmp(p + 17, ".xbx") == 0)
+		hex = p + 9;
+	else
+		return FALSE;
+	for (int i = 0; i < 8; i++)
+	{
+		if (!((hex[i] >= '0' && hex[i] <= '9') || (hex[i] >= 'a' && hex[i] <= 'f')))
+			return FALSE;
+	}
 	return TRUE;
 }
 
@@ -98,6 +132,40 @@ void CMenuItem::LoadIcon()
 {
 	if (m_pTexture != NULL || m_strIcon.size() == 0)
 		return;
+
+	// (Fix: an XBE's automatic icon is its title image, copied by the scan
+	// to E:\UDATA\<title id>\TitleImage.xbx and loaded from there. Every XBE
+	// with the same title id (homebrew often shares one, or has none) got the
+	// first one's picture, and one whose image couldn't be copied got none.
+	// It's now read from the XBE itself, cached by the XBE's path.)
+	if (m_pElement != NULL && IsTitleImageCachePath(StrToLower(m_strIcon)))
+	{
+		std::string xbe = m_pElement->GetAttribute("Action");
+		if (xbe.size() > 4 && StrCmpNoCase(StrRight(xbe, 4), ".xbe") == 0)
+		{
+			if (StrFind(xbe, ":") == -1)
+				ResolvePath(xbe.c_str(), xbe);
+			std::string key = StrToLower(xbe);
+			std::map<std::string, IDirect3DTexture8 *>::iterator it = s_iconCache.find(key);
+			if (it != s_iconCache.end() && it->second != NULL)
+			{
+				m_pTexture = it->second;
+				m_pTexture->AddRef();
+				return;
+			}
+			if (FileExists(xbe.c_str()) && LoadXbeIcon(xbe.c_str(), &m_pTexture) && m_pTexture != NULL)
+			{
+				s_iconCache[key] = m_pTexture;
+				m_pTexture->AddRef();
+				return;
+			}
+			// No usable title image in the XBE: whatever is in the shared
+			// file is another XBE's, so no icon.
+			m_pTexture = NULL;
+			m_strIcon.clear();
+			return;
+		}
+	}
 
 	if (StrFind(m_strIcon, ":") == -1)
 		ResolvePath(m_strIcon.c_str(), m_strIcon);
@@ -156,7 +224,7 @@ void CMenuItem::LoadIcon()
 		if (StrCmpNoCase(StrRight(key, 4), ".xbe") == 0)
 			loaded = LoadXbeIcon(key.c_str(), &m_pTexture);
 		else
-			loaded = LoadTextureFromFile(m_strIcon.c_str(), g_pd3dDevice, &m_pTexture, 128, 128, NULL);
+			loaded = LoadTextureFromFileMax(m_strIcon.c_str(), g_pd3dDevice, &m_pTexture, 128, 128);
 		if (!loaded)
 		{
 			m_pTexture = NULL;
@@ -172,6 +240,29 @@ void CMenuItem::LoadIcon()
 	else
 	{
 		m_strIcon.clear();
+	}
+}
+
+void PruneIconCache()
+{
+	std::map<std::string, IDirect3DTexture8 *>::iterator it = s_iconCache.begin();
+	while (it != s_iconCache.end())
+	{
+		IDirect3DTexture8 *texture = it->second;
+		// Only the cache's reference left (and this one): unused.
+		ULONG count = texture != NULL ? texture->AddRef() : 0;
+		if (texture != NULL)
+			texture->Release();
+		if (texture == NULL || count <= 2)
+		{
+			if (texture != NULL)
+				texture->Release();
+			s_iconCache.erase(it++);
+		}
+		else
+		{
+			++it;
+		}
 	}
 }
 

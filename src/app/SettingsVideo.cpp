@@ -421,7 +421,7 @@ BOOL CVideoSetting::Save()
 	{
 		// The message has no format fields; GetStringA's argument is still on
 		// the stack as a third sprintf argument in the original.
-		sprintf(message, GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
+		StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
 		ShowMessage(message, GetString(STR_ERROR), MSGBOX_BUTTONS_OK);
 		return FALSE;
 	}
@@ -673,7 +673,7 @@ BOOL CVideoSetting::Save()
 		if (!g_config.SaveAs(path.c_str()))
 		{
 			DWORD error = GetLastError();
-			sprintf(message, GetStringA(STR_MSG_SETTING_SAVE_ERROR), error);
+			StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_SAVE_ERROR), error);
 			ShowMessage(message, L"Save Error", MSGBOX_BUTTONS_OK);
 			ok = FALSE;
 		}

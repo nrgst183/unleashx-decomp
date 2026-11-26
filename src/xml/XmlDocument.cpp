@@ -398,7 +398,9 @@ BOOL CXmlDocument::SaveAs(const char *fileName)
 	FILE *fp = fopen(fileName, "w+b");
 	if (fp == NULL || text.size() == 0)
 	{
-		// The original leaks fp when the text is empty.
+		// (Fix: the original leaked fp when the text was empty.)
+		if (fp != NULL)
+			fclose(fp);
 		OutputDebugStringA("Unable to save XML document.\n");
 		return FALSE;
 	}

@@ -415,13 +415,12 @@ unsigned __stdcall CFileManager::CollectThread(void *param)
 			SFolderItem *item = *it;
 			if (item != NULL && (pass == 1 || (item->m_bMarked && !item->m_bParent)))
 			{
-				char path[0x134];
-				strcpy(path, dir.c_str());
-				strcat(path, item->GetName().c_str());
+				// (Fix: built in a 0x134-byte stack buffer in the original.)
+				std::string path = dir + item->GetName();
 				if (!item->m_bFolder)
 				{
 					g_nOperationFiles++;
-					g_fileList.push_back(SFileListItem(std::string(path), FALSE, item->m_dwSize));
+					g_fileList.push_back(SFileListItem(path, FALSE, item->m_dwSize));
 					g_ullOperationTotal += item->m_dwSize;
 					g_ullOperationBytes += item->m_dwSize;
 				}
@@ -429,12 +428,12 @@ unsigned __stdcall CFileManager::CollectThread(void *param)
 				{
 					// A drive in Root: "C:\".
 					if (separator == '\\' && StrFind(dir, ":") == -1)
-						strcat(path, ":\\");
+						path.append(":\\");
 					g_nOperationFolders++;
 					memset(g_szOperationFile, 0, sizeof(g_szOperationFile));
 					wcscpy(g_szOperationFile, item->m_pszName);
 					g_fileList.push_back(SFileListItem(std::string(path), TRUE, 0));
-					pane->CollectFiles(path);
+					pane->CollectFiles(path.c_str());
 				}
 			}
 			if (g_bCancelOperation)

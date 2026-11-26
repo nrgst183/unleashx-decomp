@@ -1,0 +1,251 @@
+# The RXDK build: Default.xbe and a disc image from src/, with RXDK's clang/lld
+# toolchain and its open SDK (picolibc, libc++, xAPI, D3D8, DirectSound, XNet,
+# XMV, ...) instead of Microsoft's XDK. Runs on Linux, macOS and Windows (MSYS2
+# or Git Bash); no Wine and no XDK needed.
+#
+#   make -f Makefile.rxdk -j8          build/rxdk/default.xbe
+#   make -f Makefile.rxdk xiso         build/rxdk/UnleashX.iso
+#   make -f Makefile.rxdk info         show what was found
+#   make -f Makefile.rxdk objs         compile only (no imagebld needed)
+#
+# What it uses (the RXDK Visual Studio / VS Code extensions install all three
+# with "Install Prerequisites"; see BUILDING.md for doing it by hand):
+#   RXDK_SDK      the SDK (include/, lib/)              default $(RXDK)/sdk
+#   RXDK_LLVM     the RXDK clang root (bin/clang, ...)  default $(RXDK)/llvm/xbox-<os>-<arch>
+#   IMAGEBLD      RXDK's imagebld (PE -> XBE)            default $(RXDK)/tools/imagebld
+# where RXDK is %ProgramData%\RXDK on Windows, ~/Library/Application Support/RXDK
+# on macOS and $XDG_DATA_HOME/rxdk (~/.local/share/rxdk) on Linux -- the same
+# places the RXDK engine looks.
+#
+# The compile and link recipe is RXDK's own (Rxdk.Engine XboxRecipe/XdkLink):
+# i686-pc-windows-gnu, -march=pentium3 (no SSE2 on the Xbox's CPU),
+# -mlong-double-64, -nostdinc with the SDK's headers only, emulated TLS, libc++,
+# a whole-archive libcompat and libkernel last, entered at XapiTitleStartup.
+
+# ---- configuration ----
+
+ifeq ($(OS),Windows_NT)
+RXDK ?= $(subst \,/,$(ProgramData))/RXDK
+HOST_ARCH := x64
+LLVM_HOST := windows
+EXE := .exe
+else
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+HOST_ARCH := $(if $(filter arm64 aarch64,$(UNAME_M)),arm64,x64)
+ifeq ($(UNAME_S),Darwin)
+RXDK ?= $(HOME)/Library/Application Support/RXDK
+LLVM_HOST := macos
+else
+RXDK ?= $(or $(XDG_DATA_HOME),$(HOME)/.local/share)/rxdk
+LLVM_HOST := linux
+endif
+EXE :=
+endif
+
+RXDK_SDK ?= $(RXDK)/sdk
+RXDK_LLVM ?= $(RXDK)/llvm/xbox-$(LLVM_HOST)-$(HOST_ARCH)
+IMAGEBLD ?= $(RXDK)/tools/imagebld$(EXE)
+CC := $(RXDK_LLVM)/bin/clang$(EXE)
+HOSTCC ?= cc
+PYTHON ?= python3
+
+# Debug=1: -O0 -g against the SDK's debug ("d") libraries.
+DEBUG ?= 0
+ifeq ($(DEBUG),1)
+OUT := build/rxdk-debug
+OPT := -O0 -g -fno-sanitize=undefined
+D := d
+else
+OUT := build/rxdk
+OPT := -O3 -fno-sanitize=undefined -gline-tables-only
+D :=
+endif
+OBJ := $(OUT)/obj
+
+SDK_INC := $(RXDK_SDK)/include
+SDK_LIB := $(RXDK_SDK)/lib
+RESOURCE_INC := $(firstword $(wildcard $(RXDK_LLVM)/lib/clang/*/include))
+BUILTINS := $(firstword $(wildcard $(RXDK_LLVM)/lib/clang/*/lib/windows/libclang_rt.builtins-i386.a))
+
+# ---- flags ----
+
+MEDIA_ZIP := assets/media.zip
+SKINS_ZIP := assets/internal_skins.zip
+file_size = $(strip $(shell wc -c < $(1)))
+
+# RXDK's per-file recipe (Rxdk.Engine XboxBuild.ComposeCompileArgs).
+TARGET_FLAGS := -target i686-pc-windows-gnu -march=pentium3 -mlong-double-64
+# INCS (per target) come ahead of the SDK so the shims in xbox/rxdk (and, for
+# the third-party code, xbox/include's <windows.h>) win.
+INCS := -Ixbox/rxdk
+COMMON_FLAGS = $(TARGET_FLAGS) -isystem $(RESOURCE_INC) $(OPT) $(INCS) \
+	-ffreestanding -fno-stack-protector -fms-extensions -fms-compatibility \
+	-nostdinc -include picolibc.h -D_XBOX -DXBOX -fno-builtin -U_DEBUG -D__ASSERT_VERBOSE \
+	-femulated-tls -I$(SDK_INC) \
+	-Wno-c++11-narrowing -Wno-address-of-temporary -Wno-ignored-pragma-intrinsic -Wno-multichar \
+	-Wno-unused-command-line-argument -Wno-deprecated-enum-enum-conversion
+CXX_FLAGS := -x c++ -std=c++17 -nostdinc++ -fexceptions -frtti -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR \
+	-I$(SDK_INC)/c++/v1 -fms-compatibility-version=19.20 -U_WIN32 -U__MINGW32__ -D_GNU_SOURCE
+C_FLAGS := -x c -std=gnu17
+
+# UnleashX's own code: the compile-time switches the XDK build had.
+UX_FLAGS := -DNDEBUG -DDEBUG_MOUSE -DUX_RXDK -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks \
+	-DMEDIA_FILE_SIZE=$(call file_size,$(MEDIA_ZIP)) -DINT_SKINS_SIZE=$(call file_size,$(SKINS_ZIP)) \
+	-Wall -Wno-unknown-pragmas -Wno-delete-non-virtual-dtor -Wno-microsoft-goto -Wno-microsoft-cast \
+	-Wno-missing-braces -Wno-unused-private-field -Wno-writable-strings -Wno-pragma-pack
+# third-party code: compiled as it is, quietly.
+TP_FLAGS := -DNDEBUG -w -Wno-register -fcheck-new -fno-strict-aliasing -fwrapv -fno-delete-null-pointer-checks
+
+# ---- sources ----
+
+SRCS := $(filter-out src/common/PlatformHost.cpp src/net/XNetHost.cpp, $(sort $(wildcard src/*/*.cpp)))
+OBJS := $(patsubst src/%.cpp,$(OBJ)/%.o,$(SRCS))
+HEADERS := $(wildcard src/*/*.h)
+SUPPORT_SRCS := $(sort $(wildcard xbox/*.cpp))
+SUPPORT_OBJS := $(patsubst xbox/%.cpp,$(OBJ)/xbox/%.o,$(SUPPORT_SRCS))
+
+TP := thirdparty
+MAD_SRCS := bit decoder fixed frame huffman layer12 layer3 stream synth timer version
+RAR_SRCS := archive arcread cmddata consio crc crypt encname errhnd extinfo extract filcreat file filefn \
+	filestr find getbits global int64 isnt log match options pathfn rar rarvm rawread rdwrfn recvol resource \
+	rijndael rs savepos scantree sha1 strfn strlist system timefn ulinks unicode unpack volume
+FATIO_SRCS := fat_access fat_cache fat_filelib fat_format fat_misc fat_string fat_table fat_write
+TP_OBJS := $(OBJ)/tp/unzip.o $(OBJ)/tp/zip.o $(OBJ)/tp/ftpparse.o $(patsubst %,$(OBJ)/tp/fat_%.o,$(FATIO_SRCS)) \
+	$(patsubst %,$(OBJ)/tp/mad_%.o,$(MAD_SRCS)) $(patsubst %,$(OBJ)/tp/rar_%.o,$(RAR_SRCS))
+
+ALL_OBJS := $(OBJS) $(SUPPORT_OBJS) $(TP_OBJS)
+
+# SDK libraries, in RXDK's link order: libcompat whole-archive ahead of everything
+# (its PIII-safe memmove/fabs/... must beat compiler-rt's), the device libraries,
+# xAPI, the runtimes, and the kernel import library last.
+SDK_LIBS := libd3dx8 libxgraphics libd3d8 libdsound libxact libxmv libxnet libxapi libcpp libc libkernel
+LINK_LIBS := -Wl,--whole-archive $(SDK_LIB)/libcompat$(D).lib -Wl,--no-whole-archive \
+	$(patsubst %,$(SDK_LIB)/%$(D).lib,$(SDK_LIBS)) $(BUILTINS)
+
+# ---- targets ----
+
+all: $(OUT)/default.xbe
+
+check-rxdk:
+	@if [ ! -x "$(CC)" ] || [ ! -f "$(SDK_INC)/xtl.h" ] || [ ! -f "$(SDK_LIB)/libxapi.lib" ]; then \
+		echo "RXDK not found. Point RXDK= (or RXDK_SDK= and RXDK_LLVM=) at it (see BUILDING.md)."; \
+		$(MAKE) --no-print-directory -f Makefile.rxdk info; exit 1; fi
+
+info:
+	@echo "RXDK:      $(RXDK)"
+	@echo "  sdk:     $(if $(wildcard $(SDK_INC)/xtl.h),$(RXDK_SDK) ($(strip $(file < $(RXDK_SDK)/VERSION))),(not found at $(RXDK_SDK)))"
+	@echo "  clang:   $(if $(wildcard $(CC)),$(CC),(not found at $(CC)))"
+	@echo "  builtins: $(or $(BUILTINS),(not found))"
+	@echo "  imagebld: $(if $(wildcard $(IMAGEBLD)),$(IMAGEBLD),(not found at $(IMAGEBLD)))"
+	@echo "Config:    $(if $(filter 1,$(DEBUG)),Debug,Release) -> $(OUT)"
+
+$(ALL_OBJS): | check-rxdk
+
+# Compiles one file; the full output goes to <object>.log.
+define compile
+	@mkdir -p $(dir $@)
+	@"$(CC)" $(1) -c $< -o $@ -MMD -MF $@.d > $@.log 2>&1; status=$$?; grep -E "(error|warning):" $@.log | head -20; \
+		if [ $$status -ne 0 ]; then rm -f $@; exit 1; fi
+endef
+
+$(OBJ)/%.o: src/%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(UX_FLAGS))
+$(OBJ)/app/Resources.o $(OBJ)/skin/SkinLoader.o: $(MEDIA_ZIP) $(SKINS_ZIP)
+$(OBJ)/xbox/%.o: xbox/%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(UX_FLAGS))
+$(OBJ)/xbox/Fat32.o: UX_FLAGS += -DFATFS_USE_CUSTOM_OPTS_FILE
+$(OBJ)/xbox/Fat32.o $(TP_OBJS): INCS += -Ixbox/include
+
+$(OBJ)/tp/unzip.o: $(TP)/zip_utils/unzip.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS))
+$(OBJ)/tp/zip.o: $(TP)/zip_utils/zip.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS))
+$(OBJ)/tp/ftpparse.o: $(TP)/ftpparse/ftpparse.c
+	$(call compile,$(C_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS))
+$(OBJ)/tp/fat_%.o: $(TP)/fat_io_lib/%.c xbox/include/fat_custom.h
+	$(call compile,$(C_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) -DFATFS_USE_CUSTOM_OPTS_FILE)
+$(OBJ)/tp/mad_%.o: $(TP)/libmad/%.c
+	$(call compile,$(C_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) -DFPM_INTEL -DHAVE_CONFIG_H -DASO_ZEROCHECK -I$(TP)/libmad)
+$(OBJ)/tp/rar_%.o: $(TP)/unrar/%.cpp
+	$(call compile,$(CXX_FLAGS) $(COMMON_FLAGS) $(TP_FLAGS) -D_LIB -I$(TP)/unrar/shim -include unrar_xbox.h)
+
+-include $(ALL_OBJS:.o=.o.d)
+
+objs: $(ALL_OBJS)
+
+# libcpp's libunwind finds the title's .eh_frame between these two markers (the
+# end one sorts after every other .eh_frame contribution, archive members
+# included); RXDK's engine links the same pair around every C++ title.
+$(OBJ)/rxdk_eh_begin.o:
+	@mkdir -p $(dir $@)
+	printf '.section .eh_frame,"dr"\n.globl ___eh_frame_start\n___eh_frame_start:\n' > $(@:.o=.S)
+	"$(CC)" $(TARGET_FLAGS) -c $(@:.o=.S) -o $@
+$(OBJ)/rxdk_eh_end.o:
+	@mkdir -p $(dir $@)
+	printf '.section .eh_frame$$z,"dr"\n.globl ___eh_frame_end\n.globl ___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6\n___eh_frame_end:\n___rxdk_eh_frame_end_requires_rxdk_tools_1_3_6:\n' > $(@:.o=.S)
+	"$(CC)" $(TARGET_FLAGS) -c $(@:.o=.S) -o $@
+
+$(OUT)/default.exe: $(ALL_OBJS) $(OBJ)/rxdk_eh_begin.o $(OBJ)/rxdk_eh_end.o
+	@echo "Linking $@"
+	@printf '"%s"\n' $(ALL_OBJS) > $(OUT)/link_objs.rsp
+	@"$(CC)" $(OBJ)/rxdk_eh_begin.o @$(OUT)/link_objs.rsp $(LINK_LIBS) $(OBJ)/rxdk_eh_end.o \
+		$(TARGET_FLAGS) -nostdlib -nostartfiles -Wl,--image-base=0x10000 -O0 -g -fuse-ld=lld \
+		-Wl,-Map,$(OUT)/default.map -e XapiTitleStartup -o $@ > $(OUT)/link.log 2>&1 || (cat $(OUT)/link.log; false)
+	@$(PYTHON) -I tools/rxdk_check.py $@ "$(RXDK_LLVM)/bin/llvm-objdump$(EXE)"
+
+# imagebld with the original's certificate and init flags (no hard disk setup
+# or changes, 64 MB on a devkit) and UnleashX's resources as sections. RXDK's
+# imagebld takes the XDK's switches. It writes a debug XBE; tools/xbe.py retail
+# rescrambles it with the retail keys for consoles and xemu.
+SECTIONS := $(OUT)/sections
+SECTION_FILES := $(SECTIONS)/MEDIA_FILE.bin $(SECTIONS)/DEF_FONT.bin $(SECTIONS)/INT_SKINS.bin \
+	$(SECTIONS)/XTIMAGE.bin $(SECTIONS)/XSIMAGE.bin
+$(SECTIONS)/MEDIA_FILE.bin: $(MEDIA_ZIP)
+$(SECTIONS)/INT_SKINS.bin: $(SKINS_ZIP)
+$(SECTIONS)/DEF_FONT.bin: assets/default_font.xpr
+$(SECTIONS)/XTIMAGE.bin: assets/title_image.xpr
+$(SECTIONS)/XSIMAGE.bin: assets/save_image.xpr
+$(SECTION_FILES):
+	@mkdir -p $(dir $@)
+	cp $< $@
+
+IMAGEBLD_FLAGS := /NOLOGO /NOLIBWARN /STACK:0x40000 /INITFLAGS:0x1C /TESTID:0x9E115330 \
+	"/TESTNAME:UnleashX Xbox Launcher" /TESTMEDIATYPES:0x800003FF /TESTREGION:0x80000007 /TESTRATINGS:0xFFFFFFFF \
+	/TITLEIMAGE:sections/XTIMAGE.bin /DEFAULTSAVEIMAGE:sections/XSIMAGE.bin \
+	/INSERTFILE:sections/MEDIA_FILE.bin,MEDIA_FILE,RN /INSERTFILE:sections/DEF_FONT.bin,DEF_FONT,RN \
+	/INSERTFILE:sections/INT_SKINS.bin,INT_SKINS,RN
+
+$(OUT)/default.xbe: $(OUT)/default.exe $(SECTION_FILES)
+	@if [ ! -f "$(IMAGEBLD)" ]; then echo "imagebld not found at $(IMAGEBLD); set IMAGEBLD= (see BUILDING.md)"; exit 1; fi
+	cd $(OUT) && "$(abspath $(IMAGEBLD))" /IN:default.exe /OUT:debug.xbe $(IMAGEBLD_FLAGS)
+	$(PYTHON) -I tools/xbe.py retail $(OUT)/debug.xbe $@
+	@echo "Built $@"
+
+# extract-xiso, built from thirdparty/ unless EXTRACT_XISO names one.
+ifeq ($(OS),Windows_NT)
+HOST_OS := __WIN32__
+else
+HOST_OS := $(if $(filter Darwin,$(UNAME_S)),__DARWIN__,__LINUX__)
+endif
+EXTRACT_XISO ?= $(OUT)/tools/extract-xiso
+$(OUT)/tools/extract-xiso: $(TP)/extract-xiso/extract-xiso.c
+	@mkdir -p $(dir $@)
+	$(HOSTCC) -O2 -w -D$(HOST_OS) -o $@ $<
+
+XISO_DIR := $(OUT)/disc
+$(OUT)/UnleashX.iso: $(OUT)/default.xbe $(EXTRACT_XISO) $(shell find assets/disc -type f)
+	rm -rf $(XISO_DIR) && mkdir -p $(XISO_DIR)
+	cp -r assets/disc/. $(XISO_DIR)/
+	cp $(OUT)/default.xbe $(XISO_DIR)/default.xbe
+	rm -f $@
+	$(EXTRACT_XISO) -c $(XISO_DIR) $@ > $(OUT)/xiso.log || (cat $(OUT)/xiso.log; false)
+	@echo "Built $@"
+
+xiso: $(OUT)/UnleashX.iso
+exe: $(OUT)/default.exe
+
+clean:
+	rm -rf $(OUT)
+
+.PHONY: all check-rxdk info objs exe xiso clean

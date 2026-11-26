@@ -157,6 +157,50 @@ BOOL LoadTextureFromFile(const char *path, IDirect3DDevice8 *device, IDirect3DTe
 	return *texture != NULL;
 }
 
+// (Not in the original.) The texture scaled down (filtered) to fit
+// maxWidth x maxHeight; it stays as it was if that fails.
+static void ShrinkTexture(IDirect3DDevice8 *device, IDirect3DTexture8 **texture, UINT maxWidth, UINT maxHeight)
+{
+	D3DSURFACE_DESC desc;
+	if (*texture == NULL || FAILED((*texture)->GetLevelDesc(0, &desc)))
+		return;
+	if (desc.Width <= maxWidth && desc.Height <= maxHeight)
+		return;
+	UINT width = desc.Width < maxWidth ? desc.Width : maxWidth;
+	UINT height = desc.Height < maxHeight ? desc.Height : maxHeight;
+	IDirect3DTexture8 *scaled = NULL;
+	if (FAILED(D3DXCreateTexture(device, width, height, 1, 0, D3DFMT_A8R8G8B8, 0, &scaled)) || scaled == NULL)
+		return;
+	IDirect3DSurface8 *source = NULL;
+	IDirect3DSurface8 *target = NULL;
+	HRESULT hr = (*texture)->GetSurfaceLevel(0, &source);
+	if (SUCCEEDED(hr))
+		hr = scaled->GetSurfaceLevel(0, &target);
+	if (SUCCEEDED(hr))
+		hr = D3DXLoadSurfaceFromSurface(target, NULL, NULL, source, NULL, NULL, D3DX_FILTER_LINEAR, 0);
+	if (target != NULL)
+		target->Release();
+	if (source != NULL)
+		source->Release();
+	if (FAILED(hr))
+	{
+		scaled->Release();
+		return;
+	}
+	(*texture)->Release();
+	*texture = scaled;
+}
+
+BOOL LoadTextureFromFileMax(const char *path, IDirect3DDevice8 *device, IDirect3DTexture8 **texture,
+                            int maxWidth, int maxHeight)
+{
+	if (!LoadTextureFromFile(path, device, texture, maxWidth, maxHeight, NULL))
+		return FALSE;
+	if (maxWidth > 1 && maxHeight > 1)
+		ShrinkTexture(device, texture, (UINT)maxWidth, (UINT)maxHeight);
+	return TRUE;
+}
+
 // 0x0009F19C (texture in eax)
 HRESULT CaptureBackBuffer(IDirect3DTexture8 **texture, BOOL backBuffer)
 {
@@ -190,7 +234,7 @@ HRESULT CaptureBackBuffer(IDirect3DTexture8 **texture, BOOL backBuffer)
 // 0x0009F23D
 HRESULT CaptureSavedScreen(IDirect3DTexture8 **texture, IDirect3DDevice8 * /*device*/)
 {
-	IDirect3DSurface8 *saved = AvGetSavedDataAddress();
+	IDirect3DSurface8 *saved = (IDirect3DSurface8 *)AvGetSavedDataAddress();
 	if (saved == NULL)
 		return S_OK;
 	D3DSURFACE_DESC desc;
@@ -294,11 +338,14 @@ bool LoadXprTexture(const char *path, IDirect3DTexture8 **texture)
 		if (ok)
 		{
 			// The data straight into the texture. (It's never unlocked.)
+			// (Fix: the file's size is checked against the texture first.)
 			D3DLOCKED_RECT locked;
+			locked.pBits = NULL;
 			(*texture)->LockRect(0, &locked, NULL, D3DLOCK_READONLY);
 			DWORD dataSize = header.totalSize - header.headerSize;
 			SetFilePointer(file, 0x800, NULL, FILE_BEGIN);
-			ok = ReadFile(file, locked.pBits, dataSize, &read, NULL);
+			ok = header.totalSize >= header.headerSize && XprTextureDataFits(*texture, locked, &dataSize) &&
+			     ReadFile(file, locked.pBits, dataSize, &read, NULL);
 			ok &= read == dataSize;
 			if (ok)
 			{
@@ -348,4 +395,18 @@ BOOL LoadXprFileTexture(const char *path, IDirect3DTexture8 **texture)
 		xpr.Destroy();
 	}
 	return ok;
+}
+
+// (Fix for the .xbx/.xpr loaders: the original read the header's data size
+// into the texture unchecked, so a bad icon or skin image overran it. Data
+// past the first level (padding, mipmaps) is now left unread: *dataSize is
+// cut to what the texture holds.)
+BOOL XprTextureDataFits(IDirect3DTexture8 *texture, const D3DLOCKED_RECT &locked, DWORD *dataSize)
+{
+	D3DSURFACE_DESC level;
+	if (texture == NULL || locked.pBits == NULL || FAILED(texture->GetLevelDesc(0, &level)))
+		return FALSE;
+	if (*dataSize > level.Size)
+		*dataSize = level.Size;
+	return TRUE;
 }

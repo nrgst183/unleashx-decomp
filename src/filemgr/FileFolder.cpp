@@ -419,7 +419,7 @@ BOOL IFileFolder::DeleteListed()
 			Sleep(1);
 			continue;
 		}
-		StrUtf8ToWide(it->path.c_str(), g_szOperationFile, 0x12F);
+		StrUtf8ToWide(it->path.c_str(), g_szOperationFile, 0x12F - 1);   // (fix: the size excludes the terminator)
 		SetFileAttributesA(it->path.c_str(), FILE_ATTRIBUTE_NORMAL);
 		if (DeleteFileA(it->path.c_str()))
 		{
@@ -447,7 +447,7 @@ BOOL IFileFolder::DeleteListed()
 		SFileListItem &item = g_fileList[i];
 		if (item.path.size() <= 1 || !item.isFolder)
 			continue;
-		StrUtf8ToWide(item.path.c_str(), g_szOperationFile, 0x12F);
+		StrUtf8ToWide(item.path.c_str(), g_szOperationFile, 0x12F - 1);   // (fix: the size excludes the terminator)
 		SetFileAttributesA(item.path.c_str(), FILE_ATTRIBUTE_NORMAL);
 		Sleep(1);
 		if (!RemoveDirectoryA(item.path.c_str()))
@@ -1051,37 +1051,29 @@ void CFileFolder::BuildPath(std::string *out, const char *base, const char *name
 // 0x00127C60
 void CFileFolder::ToXboxPath(std::string *out, const char *path)
 {
-	// "/c/apps/x" -> "C:\apps\x"; "/c" -> "c:\". (Only a drive followed
+	// "/c/apps/x" -> "C:\\apps\\x"; "/c" -> "c:\\". (Only a drive followed
 	// by a folder is upper-cased.) A doubled colon is then made single.
-	char buffer[260];
-	memset(buffer, 0, sizeof(buffer));
-	int skip = 0;
-	while (path[skip] == '/')
-		skip++;
-	const char *p = path + skip;
-	const char *slash = strchr(p, '/');
-	int n = 0;
+	// (Fix: the original built it in a 260-byte stack buffer with no bound;
+	// folders on USB drives and discs run deeper.)
+	while (*path == '/')
+		path++;
+	const char *slash = strchr(path, '/');
+	std::string result;
 	if (slash == NULL)
 	{
-		for (; *p != 0; p++)
-			buffer[n++] = *p;
-		buffer[n] = ':';
-		buffer[n + 1] = '\\';
-		n += 2;
+		result = path;
+		result.append(":\\");
 	}
 	else
 	{
-		for (; p < slash; p++)
-			buffer[n++] = (char)toupper(*p);
-		buffer[n] = ':';
-		buffer[n + 1] = '\\';
+		for (const char *p = path; p < slash; p++)
+			result += (char)toupper((unsigned char)*p);
+		result += ':';
 		// The rest from the slash (which lands on the backslash).
-		for (p = slash; *p != 0; p++, n++)
-			buffer[n + 1] = *p == '/' ? '\\' : *p;
-		n++;
+		for (const char *p = slash; *p != 0; p++)
+			result += *p == '/' ? '\\' : *p;
 	}
-	buffer[n] = 0;
-	*out = buffer;
+	*out = result;
 	StrReplaceAll(*out, "::", ":");
 }
 

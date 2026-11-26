@@ -185,7 +185,7 @@ BOOL CAutoLaunch::Save()
 	CXmlElement *settings = g_config.FindElement(&g_config.m_root, "Settings");
 	if (settings == NULL)
 	{
-		sprintf(message, GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
+		StrFormatBuf(message, sizeof(message), GetStringA(STR_MSG_SETTING_NOCONFIG), STR_MSG_SETTING_NOCONFIG);
 		ShowMessage(message, GetString(STR_ERROR), MSGBOX_BUTTONS_OK);
 		return FALSE;
 	}

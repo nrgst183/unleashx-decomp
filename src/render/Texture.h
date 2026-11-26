@@ -30,6 +30,12 @@ extern IDirect3DDevice8 *g_pd3dDevice;   // 0x00277664
 // picture's own size. FALSE on failure (and *texture = NULL). (path in ecx)
 BOOL LoadTextureFromFile(const char *path, IDirect3DDevice8 *device, IDirect3DTexture8 **texture,
                          int width, int height, SImageInfo *info);   // 0x0009ECB3
+// LoadTextureFromFile for a picture drawn into a box of at most maxWidth x
+// maxHeight (menu icons, album art, previews): a bigger one is scaled down
+// to that once loaded, so it doesn't keep its full size in memory. (Not for
+// skin images, drawn at the screen's scale.)
+BOOL LoadTextureFromFileMax(const char *path, IDirect3DDevice8 *device, IDirect3DTexture8 **texture,
+                            int maxWidth, int maxHeight);
 
 // D3DResource_Release (XDK) and clear the pointer.
 void ReleaseTexture(IDirect3DTexture8 *&texture);   // inlined everywhere in the original
@@ -67,6 +73,9 @@ BOOL SaveTextureToXpr(const char *path, IDirect3DTexture8 *texture);   // 0x000A
 // A texture from an .xpr file holding one texture (the MS dashboard's .xbx
 // files), read straight into it.
 bool LoadXprTexture(const char *path, IDirect3DTexture8 **texture);   // 0x0009F909
+// Whether an XPR's texture data (dataSize bytes, from the file's header) fits
+// the level-0 surface of the texture made for it and locked as locked.
+BOOL XprTextureDataFits(IDirect3DTexture8 *texture, const D3DLOCKED_RECT &locked, DWORD *dataSize);
 // The first texture of an .xpr file, copied with black as the color key.
 // (path in eax)
 BOOL LoadXprFileTexture(const char *path, IDirect3DTexture8 **texture);   // 0x000A2371

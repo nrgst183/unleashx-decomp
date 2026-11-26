@@ -195,15 +195,20 @@ HRESULT CSkinBrowser::Init(IDirect3DTexture8 *checked, IDirect3DTexture8 *unchec
 // 0x000F6791 (this in ebx)
 void CSkinBrowser::Show()
 {
+	Layout();
+	StartList();
+	m_bClosing = FALSE;
+	m_bOnline = FALSE;
+	m_bOpen = TRUE;
+}
+
+void CSkinBrowser::Layout()
+{
 	m_fY = 10.0f;
 	m_fX = 30.0f;
 	m_fWidth = 580.0f;
 	m_fHeight = 460.0f;
 	ScaleToScreen(&m_fX, &m_fWidth, &m_fY, &m_fHeight, TRUE);
-	StartList();
-	m_bClosing = FALSE;
-	m_bOnline = FALSE;
-	m_bOpen = TRUE;
 }
 
 // 0x000F673A (this in esi)
@@ -425,7 +430,7 @@ void CSkinBrowser::UpdatePreview()
 		path = m_online[m_nSelected].localThumb;
 	}
 	if (FileExists(path.c_str()) &&
-	    !LoadTextureFromFile(path.c_str(), g_pd3dDevice, &m_pPreview, 320, 240, NULL))
+	    !LoadTextureFromFileMax(path.c_str(), g_pd3dDevice, &m_pPreview, 320, 240))
 		m_pPreview = NULL;
 }
 
@@ -782,7 +787,7 @@ static unsigned __stdcall InstallSkinThread(void *param)
 	const char *path = (const char *)param;
 	if (path == NULL)
 		return 1;
-	std::string zipFile = _strdup(path);   // (never freed)
+	std::string zipFile = path;   // (fix: no leaked _strdup copy)
 	std::string folder = GetPathDirectory(zipFile.c_str());
 	Sleep(100);
 	HZIP zip = OpenZip((void *)zipFile.c_str(), 0, ZIP_FILENAME);
@@ -1094,7 +1099,7 @@ HRESULT CSkinBrowser::RenderOnline()
 		if (m_pSession->m_bSavedToFile)
 		{
 			ReleaseTexture(m_pPreview);
-			if (!LoadTextureFromFile(m_pSession->GetCachePath(), g_pd3dDevice, &m_pPreview, 320, 240, NULL))
+			if (!LoadTextureFromFileMax(m_pSession->GetCachePath(), g_pd3dDevice, &m_pPreview, 320, 240))
 				m_pPreview = NULL;
 			else
 				m_online[m_nSelected].localThumb = m_pSession->GetCachePath();

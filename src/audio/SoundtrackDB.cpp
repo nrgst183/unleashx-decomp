@@ -94,6 +94,11 @@ static BOOL ReadSector(DWORD magic)
 	if (!ReadFile(s_hDb, s_sector.bytes, SOUNDTRACK_DB_SECTOR, &read, NULL) || read != SOUNDTRACK_DB_SECTOR ||
 	    (magic != 0 && s_sector.magic != magic))
 		return FALSE;
+	// (Fix: a soundtrack's song count indexes its song groups and the code
+	// walking them; one the database can't hold is refused here rather than
+	// read past the sector.)
+	if (magic == SOUNDTRACK_MAGIC && s_sector.soundtrack.numSongs > SOUNDTRACK_MAX_SONGS)
+		return FALSE;
 	return TRUE;
 }
 
@@ -164,6 +169,10 @@ BOOL OpenSoundtrackDB()
 		if (ReadSector(0))
 		{
 			memcpy(&s_header, s_sector.bytes, sizeof(s_header));
+			// (Fix: the count indexes soundtrackIds[SOUNDTRACK_MAX]; ST.DB can be
+			// replaced over FTP, and a larger one wrote past s_header.)
+			if (s_header.numSoundtracks > SOUNDTRACK_MAX)
+				s_header.numSoundtracks = SOUNDTRACK_MAX;
 			return TRUE;
 		}
 		CloseHandle(s_hDb);
@@ -201,7 +210,7 @@ BOOL CreateSoundtrack(const wchar_t *name, DWORD *id)
 		SetLastError(ERROR_INVALID_HANDLE);
 		return FALSE;
 	}
-	if (s_header.numSoundtracks == SOUNDTRACK_MAX)
+	if (s_header.numSoundtracks >= SOUNDTRACK_MAX)
 	{
 		SetLastError(ERROR_NOT_ENOUGH_MEMORY);
 		return FALSE;

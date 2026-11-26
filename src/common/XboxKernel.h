@@ -201,11 +201,30 @@ typedef LONG(__stdcall *LPTOP_LEVEL_EXCEPTION_FILTER)(EXCEPTION_POINTERS *except
 LPTOP_LEVEL_EXCEPTION_FILTER SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER filter);
 #endif
 
-#ifdef _XBOX
+#ifdef UX_RXDK
+// RXDK's <xtl.h> brings the whole kernel API (<xboxkrnl/xboxkrnl.h>), which the
+// XDK kept to itself; only the names it spells differently are mapped here.
+#define ReturnFirmwareHalt HalHaltRoutine
+#define ReturnFirmwareReboot HalRebootRoutine
+#define ReturnFirmwareQuickReboot HalQuickRebootRoutine
+#define ReturnFirmwareHard HalKdRebootRoutine
+#define ReturnFirmwareFatal HalFatalErrorRebootRoutine
+// The kernel exports the ANSI_STRING itself; RXDK declares it as a one-element
+// array, so it decays to a pointer.
+#define UX_XE_IMAGE_FILE_NAME (XeImageFileName[0])
+typedef SIZE_T UX_SIZE_T;
+#else
+#define UX_XE_IMAGE_FILE_NAME XeImageFileName
+
+#if defined(_XBOX) && !defined(UX_WIN32)
 #define KRNLAPI __declspec(dllimport)
 #else
 #define KRNLAPI
 #endif
+
+// What the kernel's NtAllocateVirtualMemory/NtFreeVirtualMemory take for the
+// region size (an in/out SIZE_T).
+typedef DWORD UX_SIZE_T;
 
 extern "C" {
 
@@ -304,8 +323,16 @@ typedef enum _FIRMWARE_REENTRY
 KRNLAPI void __stdcall HalReturnToFirmware(FIRMWARE_REENTRY routine);
 
 }
+#endif   // !UX_RXDK
 
 // IDE pass-through (not in the XDK headers)
+#ifdef UX_WIN32
+// (Windows' winioctl.h has an IDEREGS of its own, without bHostSendsData.)
+#define _IDEREGS _UX_IDEREGS
+#define IDEREGS UX_IDEREGS
+#define _ATA_PASS_THROUGH _UX_ATA_PASS_THROUGH
+#define ATA_PASS_THROUGH UX_ATA_PASS_THROUGH
+#endif
 typedef struct _IDEREGS
 {
 	UCHAR bFeaturesReg;
@@ -379,8 +406,11 @@ DWORD __stdcall XWriteTitleInfoAndRebootA(LPCSTR launchPath, LPCSTR dDrivePath, 
 DWORD __stdcall XMountMURootA(DWORD port, DWORD slot, char *drive);
 // The memory unit (or other mass storage) in a port/slot as a kernel device;
 // name receives its object name.
+#ifndef UX_RXDK
+// (RXDK's XAPI has its own, cdecl, and <xbox.h> declares them.)
 NTSTATUS __stdcall MU_CreateDeviceObject(DWORD port, DWORD slot, PANSI_STRING name);   // 0x0022E581
 void __stdcall MU_CloseDeviceObject(DWORD port, DWORD slot);                            // 0x0022E514
+#endif
 BOOL __stdcall XapiFormatFATVolume(PANSI_STRING volume);                                 // 0x00039B64
 }
 // IOCTL_CDROM_CHECK_VERIFY: is there a readable disc.

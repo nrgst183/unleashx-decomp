@@ -144,6 +144,16 @@ static BOOL ExtractZippedSkin(CSkin *skin, const char *zipPath, const std::strin
 		int slash = StrFind(name, "/");
 		if (slash != -1)
 			name = StrMid(name, slash + 1, (int)name.size() - (slash + 1));
+		// (Fix: an entry that climbs out of the temp folder, or names a
+		// drive, is refused. Skins are downloaded, and each entry's
+		// destination is deleted before it's written.)
+		std::string check = "\\" + name + "\\";
+		StrReplaceAll(check, "/", "\\");
+		if (check.find("\\..\\") != std::string::npos || name.find(':') != std::string::npos)
+		{
+			allOk = FALSE;
+			continue;
+		}
 		dest += name;
 		StrReplaceAll(dest, "/", "\\");
 

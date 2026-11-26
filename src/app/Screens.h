@@ -183,6 +183,8 @@ public:
 	HRESULT Init(CXBFont *font);                          // 0x000C18A3
 	// Lays the panel out again and opens it. (this in ebx)
 	void Show();                                          // 0x0002B530
+	// Show's layout alone, for a new screen size (and its pages').
+	void Layout();
 	// Always returns 1. (this in ecx, action in edx, pad in eax)
 	int HandleInput(int *action, SGamepadState **pad);    // 0x000C62EE
 	// 1 when closed. (this in ebx)
@@ -236,6 +238,8 @@ public:
 	HRESULT Init(IDirect3DTexture8 *checked, IDirect3DTexture8 *unchecked, CXBFontEx *font);   // 0x000F5DEC
 	// Lays it out and lists the skins again. (this in ebx)
 	void Show();                                          // 0x000F6791
+	// Show's layout alone, for a new screen size.
+	void Layout();
 	// (this in ecx, pad in eax)
 	HRESULT ProcessInput(int *action, SGamepadState **pad);   // 0x000F67FD
 	HRESULT Render();                                     // 0x000F8685 (this in esi)
@@ -395,6 +399,9 @@ public:
 	SKeystroke *m_pKeystroke;              // +0x318 the debug keyboard's
 	KeyboardCharEvent m_keyEvents;         // +0x31C
 	CAppSettings *m_pSettings;             // +0x324
+
+	// The window's layout alone, for a new screen size.
+	void Relayout() { ResetWindow(); }
 
 private:
 	// Clears the text and the cursor. (this in edi)

@@ -9,6 +9,7 @@
 #include "../common/FileUtil.h"
 #include "../common/StrUtil.h"
 #include "../common/XboxKernel.h"
+#include "../net/FtpServer.h"
 #include "../net/Network.h"
 #include "../net/Newsfeed.h"
 #include "../settings/AppSettings.h"
@@ -26,7 +27,8 @@ static CAppSettings *s_pSettings = CAppSettings::GetInstance();         // 0x002
 
 DWORD g_dwSkinTextTick;                // 0x00278CEC tick of the last GetSkinTextValue call
 int g_nThreadCount;                    // 0x00276248 $Thread$: running threads (ThreadNotifyRoutine)
-int g_nFtpClientCount;                 // 0x002785D8 $NumClient$ TODO: verify
+// ($NumClient$ is the FTP server's user count: 0x002785D8 is
+// g_ftpServer.m_nCurrentUsers. The decomp had it as a variable nothing set.)
 
 // Refresh deadlines (GetTickCount values).
 static DWORD s_dwNextDriveRefresh;     // 0x00278CE8
@@ -68,10 +70,14 @@ static void ClearText(int source)
 	s_textCache[source].clear();
 }
 
-// ANSI string to the 100-char text buffer.
+// ANSI string to the 100-char text buffer (101 wchar_ts). (Fix: cut to fit
+// and terminated; the original passed the string with its NUL, which left
+// longer ones, such as a feed's title, unterminated or not converted.)
 static void ToWide(const std::string &s, wchar_t *out)
 {
-	MultiByteToWideChar(CP_ACP, 0, s.c_str(), (int)s.size() + 1, out, 100);
+	int length = s.size() < 100 ? (int)s.size() : 100;
+	int n = length != 0 ? MultiByteToWideChar(CP_ACP, 0, s.c_str(), length, out, 100) : 0;
+	out[n > 0 ? n : 0] = 0;
 }
 
 // --- Drives -----------------------------------------------------------------
@@ -402,6 +408,10 @@ static BOOL UpdateSongTexts()
 {
 	wchar_t text[101];
 	wchar_t song[100];
+	// (Fix: the original left text uninitialised, and GetCurrentInfo doesn't
+	// fill it while nothing plays: the soundtrack showed stack garbage
+	// between refreshes.)
+	memset(text, 0, sizeof(text));
 	memset(song, 0, sizeof(song));
 	g_pMusicManager->GetCurrentInfo(text, song, NULL);
 	SetText(TEXT_SOUNDTRACK, text);
@@ -488,7 +498,9 @@ static BOOL LoadNewsFromDisk(std::string url, CXmlElement **item)
 		}
 		else
 		{
-			// Quirk: doc is leaked here.
+			// (Fix: doc is freed; the original leaked it, the whole parsed
+			// feed, every time a cached feed wasn't RSS.)
+			delete doc;
 			DeleteFileA(path.c_str());
 		}
 	}
@@ -521,7 +533,7 @@ static void BuildNewsText()
 			break;
 		wcscat(s_pszNewsText, separator);
 		wchar_t headline[100];
-		StrUtf8ToWide(str.c_str(), headline, 100);
+		StrUtf8ToWide(str.c_str(), headline, 100 - 1);   // (fix: the size excludes the terminator)
 		wcscat(s_pszNewsText, headline);
 	}
 }
@@ -894,7 +906,7 @@ const wchar_t *GetSkinTextValue(int source)
 		break;
 
 	case TEXT_NUMCLIENT:
-		swprintf(text, 101, L"%d", g_nFtpClientCount);
+		swprintf(text, 101, L"%d", g_ftpServer.m_nCurrentUsers);
 		SetText(TEXT_NUMCLIENT, text);
 		break;
 

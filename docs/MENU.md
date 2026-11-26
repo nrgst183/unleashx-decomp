@@ -58,6 +58,10 @@ item is shown UnleashX looks it up and stores the results on the item
   extracted from the XBE, and a `TitleMeta.xbx` with `TitleName=<name>` is
   written next to it. When running from DVD the icon goes to
   `Z:\Media\<title id>.xbx` instead.
+  (Fix: the menu reads such an icon from the XBE itself, not from that
+  file: XBEs that share a title id, as homebrew often does, all showed the
+  first one's picture. An XBE without a title image gets no icon instead of
+  another's.)
 * `AltIcon`: the first of `icon.png`, `icon.jpg`, `avalaunch_icon.png`,
   `mxm_thumb.jpg`, `default.png`, `default.jpg` in the XBE's folder.
 * `Preview` (if the skin shows previews): the first of `preview.wmv`,
