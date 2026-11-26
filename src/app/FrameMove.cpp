@@ -97,6 +97,10 @@ void CUnleashX::ChangeResolution(unsigned width, unsigned height)
 		m_menu.SetArea((float)g_skin.m_rcMenu.left, (float)g_skin.m_rcMenu.top, (float)g_skin.m_rcMenu.width,
 		               (float)g_skin.m_rcMenu.height);
 		m_menu.SetHorizontal(g_skin.m_bHorizontal);
+		// (As OnSkinLoaded: item positions make the area their own bounds,
+		// which the scroll clipping uses; without this, icons and the first
+		// and last rows were cut off while the list glided.)
+		m_menu.SetItemPositions(g_skin.m_nItemPosCount, g_skin.m_itemPos);
 	}
 	if (m_pSettingsMenu != NULL)
 		m_pSettingsMenu->Layout();
@@ -111,6 +115,7 @@ void CUnleashX::ChangeResolution(unsigned width, unsigned height)
 	if (m_pTextEditor != NULL)
 		m_pTextEditor->Relayout();
 	COptionMenu::RelayoutAll();
+	g_virtualKeyboard.Layout();
 }
 #endif
 

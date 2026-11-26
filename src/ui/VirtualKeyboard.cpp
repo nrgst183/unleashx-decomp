@@ -394,19 +394,6 @@ void CVirtualKeyboard::BuildLayouts()
 // 0x000DC9D7
 void CVirtualKeyboard::Open()
 {
-	// The screen's scale (at least 1:1) for the font and the keys.
-	m_fScaleX = 1.0f;
-	m_fScaleY = 1.0f;
-	ScaleToScreen(NULL, &m_fScaleX, NULL, &m_fScaleY, TRUE);
-	if (m_fScaleX < 1.0f)
-		m_fScaleX = 1.0f;
-	if (m_fScaleY < 1.0f)
-		m_fScaleY = 1.0f;
-	m_pFont->SetScaleFactors(m_fScaleX, m_fScaleY);
-	float lineHeight = m_pFont->m_fScaleFactorY * m_pFont->m_fFontHeight;
-	m_fTextHeight = lineHeight + 10.0f;
-	m_fKeyHeight = lineHeight + (float)(m_bEmbedded ? 6 : 12) * m_fScaleY;
-	m_fKeyWidth = m_pFont->GetTextWidth(L"W") + m_fScaleX * 6.0f;
 	m_bDone = FALSE;
 	m_bCancelled = FALSE;
 	m_nRow = 0;
@@ -424,6 +411,28 @@ void CVirtualKeyboard::Open()
 	m_bShift = FALSE;
 	m_strText.erase(0, std::wstring::npos);
 	m_nCursor = 0;
+	Layout();
+}
+
+// Open's layout alone: what a new screen size changes. (The original did it
+// all in Open, so a keyboard open while the screen changed kept the old
+// size, and so did the startup password keyboard, opened before the window's
+// size was known.)
+void CVirtualKeyboard::Layout()
+{
+	// The screen's scale (at least 1:1) for the font and the keys.
+	m_fScaleX = 1.0f;
+	m_fScaleY = 1.0f;
+	ScaleToScreen(NULL, &m_fScaleX, NULL, &m_fScaleY, TRUE);
+	if (m_fScaleX < 1.0f)
+		m_fScaleX = 1.0f;
+	if (m_fScaleY < 1.0f)
+		m_fScaleY = 1.0f;
+	m_pFont->SetScaleFactors(m_fScaleX, m_fScaleY);
+	float lineHeight = m_pFont->m_fScaleFactorY * m_pFont->m_fFontHeight;
+	m_fTextHeight = lineHeight + 10.0f;
+	m_fKeyHeight = lineHeight + (float)(m_bEmbedded ? 6 : 12) * m_fScaleY;
+	m_fKeyWidth = m_pFont->GetTextWidth(L"W") + m_fScaleX * 6.0f;
 	if (m_strTitle.size() != 0)
 		m_fTitleHeight = m_pFont->m_fScaleFactorY * m_pFont->m_fFontHeight * m_fScaleY * 1.1f + 10.0f;
 	else

@@ -91,6 +91,9 @@ public:
 	// Starts a new input: scales and places the keyboard, clears the text
 	// and the done/cancelled state.
 	virtual void Open();                                  // slot 3, 0x000DC9D7
+	// Open's layout (scale, keys, place) alone, for a new screen size; the
+	// text and the cursor stay.
+	void Layout();
 
 	// The typed text as narrow text; "" if cancelled. (this in eax)
 	std::string GetResult();                              // 0x00014242

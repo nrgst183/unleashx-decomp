@@ -401,7 +401,11 @@ public:
 	CAppSettings *m_pSettings;             // +0x324
 
 	// The window's layout alone, for a new screen size.
-	void Relayout() { ResetWindow(); }
+	void Relayout()
+	{
+		ResetWindow();
+		m_keyboard.Layout();
+	}
 
 private:
 	// Clears the text and the cursor. (this in edi)

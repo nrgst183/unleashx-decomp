@@ -47,9 +47,11 @@ SScreenRect GetScreenRect()
 float g_fPictureAspect;
 
 // ScaleToScreen when the Windows build draws at its window's size: one scale
-// for both axes (the smaller), the layout centered in the window. Something
-// that spans the whole layout one way (a background) still fills the window
-// that way.
+// for both axes (the smaller), the layout centered in the window. Everything
+// does, full-layout images too: a skin's panels are often one 640x480 image
+// with its texts placed over it, and stretching it alone pulled the texts
+// out of their panels. (The background picture fills the window through
+// DrawTextureFullScreen, and the globe is 3D.)
 static void ScaleEvenly(float *x, float *width, float *y, float *height, BOOL base640x480)
 {
 	const SViewport &viewport = g_pSettings->m_viewport;
@@ -63,33 +65,15 @@ static void ScaleEvenly(float *x, float *width, float *y, float *height, BOOL ba
 	float sizeScale = base640x480 ? scale640 : scale;
 	float offsetX = (screenWidth - skinWidth * scale) * 0.5f + (float)viewport.X;
 	float offsetY = (screenHeight - skinHeight * scale) * 0.5f + (float)viewport.Y;
-	float fullWidth = base640x480 ? 640.0f : skinWidth;
-	float fullHeight = base640x480 ? 480.0f : skinHeight;
 
-	if (x != NULL && width != NULL && *x <= 0.0f && *width >= fullWidth)
-	{
-		*x = (float)viewport.X;
-		*width = screenWidth;
-	}
-	else
-	{
-		if (x != NULL)
-			*x = scale * *x + offsetX;
-		if (width != NULL && *width != 0.0f)
-			*width = sizeScale * *width;
-	}
-	if (y != NULL && height != NULL && *y <= 0.0f && *height >= fullHeight)
-	{
-		*y = (float)viewport.Y;
-		*height = screenHeight;
-	}
-	else
-	{
-		if (y != NULL)
-			*y = scale * *y + offsetY;
-		if (height != NULL && *height != 0.0f)
-			*height = sizeScale * *height;
-	}
+	if (x != NULL)
+		*x = scale * *x + offsetX;
+	if (width != NULL && *width != 0.0f)
+		*width = sizeScale * *width;
+	if (y != NULL)
+		*y = scale * *y + offsetY;
+	if (height != NULL && *height != 0.0f)
+		*height = sizeScale * *height;
 }
 
 // 0x0009E34E (x in esi, width in edi)

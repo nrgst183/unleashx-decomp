@@ -254,7 +254,18 @@ HRESULT CUnleashX::RenderBackground()
 	// The skin's background image or video.
 	try
 	{
-		if (g_skin.m_pBackground != NULL)
+		if (g_skin.m_pBackground != NULL && g_fPictureAspect > 0.0f)
+		{
+			// (Windows build, drawing at its window's shape) Over the skin's
+			// own area, as its texts are: skins paint their panels into the
+			// background, and stretched to the window they no longer lined
+			// up with the texts. The sides show the globe behind.
+			float bgX = 0.0f, bgY = 0.0f;
+			float bgWidth = (float)g_pSettings->m_nSkinWidth, bgHeight = (float)g_pSettings->m_nSkinHeight;
+			ScaleToScreen(&bgX, &bgWidth, &bgY, &bgHeight, FALSE);
+			DrawTexture(g_skin.m_pBackground, bgX, bgY, bgWidth, bgHeight, 1.0f, NULL, 0.0f, NULL);
+		}
+		else if (g_skin.m_pBackground != NULL)
 			DrawTextureFullScreen(g_skin.m_pBackground, 1.0f);
 		else if (g_skin.m_pBackgroundVideo != NULL)
 			g_skin.m_pBackgroundVideo->Render();
