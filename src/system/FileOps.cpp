@@ -1113,6 +1113,11 @@ static unsigned __stdcall UnzipThread(void *)
 					StrFormat(message, "Renamed \"%s\" to \"%s\"", folder.c_str(), path.c_str());
 					LogOperation(message.c_str(), FALSE);
 					logged = TRUE;
+					// (Fix: the folder as renamed too; the one made above had
+					// the old name.)
+					int cut = StrReverseFind(path, "\\", -1);
+					if (cut > 3)
+						CreateDirectoryTree(StrLeft(path, cut).c_str());
 				}
 				ShowOperationFile(path);
 				if (UnzipItem(zip, i, (void *)path.c_str(), 0, ZIP_FILENAME) != ZR_OK)

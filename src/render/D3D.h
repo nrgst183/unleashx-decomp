@@ -210,6 +210,7 @@ struct D3DVIEWPORT8
 };
 
 struct SPresentParameters;   // D3DPRESENT_PARAMETERS, see app/XBApp.h
+typedef SPresentParameters D3DPRESENT_PARAMETERS;
 
 // D3DTRANSFORMSTATETYPE (Xbox)
 #define D3DTS_VIEW 0

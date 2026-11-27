@@ -1,7 +1,11 @@
 # The Windows build (UnleashX.sln, platform x86, Visual Studio 2022): UnleashX.exe
 # with its disc\ folder next to it, as BUILDING.md's "For Windows" describes.
 name: windows build
-on: [push, pull_request]
+on:
+  push:
+    branches: ['**']   # (not tags: release.yml builds those)
+  pull_request:
+  workflow_call:   # (release.yml builds with it too)
 jobs:
   build:
     runs-on: windows-2022

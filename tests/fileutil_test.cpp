@@ -39,7 +39,8 @@ int main()
 	CheckDir("file.txt", "");
 	CheckDir("name", "name");
 	Check("E:\\Games\\Halo\\default.xbe", FALSE, "(unchanged)");
-	Check("E:\\a\\b?c.txt", TRUE, "E:\\a\\bc.txt");
+	Check("E:\\a\\b?c.txt", TRUE, "E:\\a\\b_c.txt");   // (replaced now; the original dropped it)
+	Check("E:\\a b+c\\d.txt", TRUE, "E:\\a b_c\\d.txt");   // folders too
 	Check("E:\\x\\this is a very long file name for fatx limits.tar.gz", TRUE,
 	      "E:\\x\\this is a very long file name for fatx.gz");
 	Check("E:\\x\\abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz.bin", TRUE,

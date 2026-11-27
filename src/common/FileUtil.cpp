@@ -271,99 +271,148 @@ BOOL IsFatxName(const char *name)
 }
 
 // 0x000A4630
-// The name is shortened by cutting it at the last space, then the last '.',
-// '-', ':' or ',' (the extension is kept aside), and finally hard at the
-// limit. Quirks: the character filter runs over the whole path, so folder
-// names lose their illegal characters too (and characters >= 0x80, which
-// IsFatxName() accepts, are dropped); ".." and "\\\\" are collapsed
-// afterwards.
+// (Rewritten; not the original's.) Every part of the path after the drive is
+// made fit for FATX, as XBMC4Gamers does it (CUtil::GetFatXQualifiedPath):
+// accented Latin letters lose their accents (as Latin-1 or UTF-8), any other
+// character FATX can't hold becomes '_', a folder name over 42 characters is
+// cut to 42, and a file name over 42 is cut keeping its extension and a
+// "cd1"/"part2"-style tag at its end, so the parts of a set stay apart
+// (folders by the same rule: a folder must map to the same name whether
+// it ends the path, as when it's made, or not, as when a file goes in it);
+// trailing spaces and dots are dropped where a name was cut. The original
+// fixed only the file name, deleted characters rather than replacing them
+// (and all of them >= 0x80), and cut at spaces and punctuation first. TRUE
+// when anything changed (out is then the new path); otherwise FALSE and out
+// is left alone. Names that come out the same aren't told apart: a copy then
+// meets the existing file as any copy does.
+static char FoldLatin1(unsigned char c)
+{
+	// 0xC0..0xFF, Latin-1: the letter without its accent, or 0.
+	static const char s_folded[] = "AAAAAAACEEEEIIIIDNOOOOOxOUUUUYTsaaaaaaaceeeeiiiidnooooo_ouuuuyty";
+	if (c < 0xC0)
+		return 0;
+	char f = s_folded[c - 0xC0];
+	return f == 'x' || f == '_' ? 0 : f;
+}
+
+static std::string FatxCharacters(const std::string &part)
+{
+	std::string out;
+	for (size_t i = 0; i < part.size(); i++)
+	{
+		unsigned char c = (unsigned char)part[i];
+		if (c < 0x80)
+		{
+			out.append(1, strchr(s_fatxCharacters, c) != NULL && c != '\\' && c != ':' ? (char)c : '_');
+			continue;
+		}
+		char folded = 0;
+		// UTF-8 for U+00C0..U+00FF: C3 80..BF.
+		if (c == 0xC3 && i + 1 < part.size() && ((unsigned char)part[i + 1] & 0xC0) == 0x80)
+		{
+			folded = FoldLatin1((unsigned char)(part[i + 1] + 0x40));
+			i++;
+		}
+		else if (((c & 0xE0) == 0xC0 || (c & 0xF0) == 0xE0 || (c & 0xF8) == 0xF0) && i + 1 < part.size() &&
+		         ((unsigned char)part[i + 1] & 0xC0) == 0x80)
+		{
+			// Any other UTF-8 character: one '_' for all its bytes.
+			int more = (c & 0xE0) == 0xC0 ? 1 : (c & 0xF0) == 0xE0 ? 2 : 3;
+			while (more-- > 0 && i + 1 < part.size() && ((unsigned char)part[i + 1] & 0xC0) == 0x80)
+				i++;
+		}
+		else
+		{
+			folded = FoldLatin1(c);
+		}
+		out.append(1, folded != 0 ? folded : '_');
+	}
+	return out;
+}
+
+static void TrimNameEnd(std::string &name)
+{
+	while (name.size() > 1 && (name[name.size() - 1] == ' ' || name[name.size() - 1] == '.'))
+		name.erase(name.size() - 1);
+}
+
+// A "cd1", "part02" (after ' ', '.', '-' or '_') ending stem, or "".
+static std::string PartTag(const std::string &stem)
+{
+	std::string lower = StrToLower(stem);
+	size_t end = lower.size();
+	size_t digits = end;
+	while (digits > 0 && isdigit((unsigned char)lower[digits - 1]))
+		digits--;
+	if (digits == end)
+		return "";
+	const char *words[2] = {"part", "cd"};
+	for (int w = 0; w < 2; w++)
+	{
+		size_t len = strlen(words[w]);
+		if (digits < len + 1 || lower.compare(digits - len, len, words[w]) != 0)
+			continue;
+		char sep = lower[digits - len - 1];
+		if (sep == ' ' || sep == '.' || sep == '-' || sep == '_')
+			return stem.substr(digits - len - 1);
+	}
+	return "";
+}
+
+std::string MakeFatxName(const std::string &name, BOOL isFile)
+{
+	std::string clean = FatxCharacters(name);
+	if (clean.size() <= 42)
+		return clean;
+	if (!isFile)
+	{
+		clean = clean.substr(0, 42);
+		TrimNameEnd(clean);
+		return clean;
+	}
+	std::string stem = clean;
+	std::string extension;
+	size_t dot = clean.rfind('.');
+	if (dot != std::string::npos && dot > 0 && clean.size() - dot <= 10)
+	{
+		extension = clean.substr(dot);
+		stem = clean.substr(0, dot);
+	}
+	std::string tag = PartTag(stem);
+	size_t room = 42 - extension.size();
+	if (tag.size() >= room)
+		tag = "";
+	stem = stem.substr(0, room - tag.size());
+	TrimNameEnd(stem);
+	return stem + tag + extension;
+}
+
 BOOL MakeFatxPath(const char *path, std::string &out)
 {
-	std::string clean;
-	std::string dir;
-	std::string name = path;
-	int slash = StrReverseFind(name, "\\", -1);
-	if (slash != -1)
+	std::string all = path;
+	std::string result;
+	size_t start = 0;
+	if (all.size() >= 2 && all[1] == ':')
 	{
-		dir = StrLeft(name, slash + 1);
-		name = StrMid(name, slash + 1, name.size() - (slash + 1));
+		start = all.size() >= 3 && all[2] == '\\' ? 3 : 2;
+		result = all.substr(0, start);
 	}
-	if (IsFatxName(name.c_str()))
+	while (start <= all.size())
+	{
+		size_t slash = all.find('\\', start);
+		BOOL last = slash == std::string::npos;
+		std::string part = all.substr(start, last ? std::string::npos : slash - start);
+		if (part.size() != 0)
+			result.append(part == "." || part == ".." ? part : MakeFatxName(part, TRUE));
+		if (last)
+			break;
+		if (result.size() == 0 || result[result.size() - 1] != '\\')
+			result.append("\\");
+		start = slash + 1;
+	}
+	if (result == all)
 		return FALSE;
-
-	for (const char *p = path; *p != '\0'; p++)
-	{
-		// (characters >= 0x80 never match)
-		if (strchr(s_fatxCharacters, *p) != NULL)
-			clean.append(1, *p);
-	}
-	slash = StrReverseFind(clean, "\\", -1);
-	if (slash != -1)
-	{
-		dir = StrLeft(clean, slash + 1);
-		clean = StrMid(clean, slash + 1, clean.size() - (slash + 1));
-	}
-
-	if ((int)clean.size() <= 42)
-	{
-		std::string joined;
-		StrFormat(joined, "%s%s", dir.c_str(), clean.c_str());
-		clean = joined;
-	}
-	else
-	{
-		std::string extension;
-		int limit = 42;
-		int dot = StrReverseFind(clean, ".", -1);
-		if (dot != -1)
-		{
-			extension = StrMid(clean, dot, clean.size() - dot);
-			clean = StrLeft(clean, dot);
-			limit = 42 - (int)extension.size();
-		}
-
-		int pos;
-		while ((pos = StrReverseFind(clean, " ", -1)) != -1 && (int)clean.size() > limit)
-			clean = StrLeft(clean, pos);
-		if ((int)clean.size() > 38)
-		{
-			while ((pos = StrReverseFind(clean, ".", -1)) != -1 && (int)clean.size() > limit)
-				clean = StrLeft(clean, pos);
-			if ((int)clean.size() > 38)
-			{
-				const char *separators[3] = { "-", ":", "," };
-				BOOL done = FALSE;
-				for (int i = 0; i < 3 && !done; i++)
-				{
-					while ((pos = StrReverseFind(clean, separators[i], -1)) != -1)
-					{
-						if ((int)clean.size() <= limit)
-						{
-							done = TRUE;
-							break;
-						}
-						clean = StrLeft(clean, pos);
-					}
-					if ((int)clean.size() <= limit)
-						done = TRUE;
-				}
-				if (!done)
-				{
-					if (extension.size() != 0)
-						clean = StrLeft(clean, limit);
-					else if ((int)clean.size() > 42)
-						clean = StrLeft(clean, 42);
-				}
-			}
-		}
-		std::string joined;
-		StrFormat(joined, "%s%s%s", dir.c_str(), clean.c_str(), extension.c_str());
-		clean = joined;
-	}
-
-	StrReplaceAll(clean, "..", ".");
-	StrReplaceAll(clean, "\\\\", "\\");
-	out = clean;
+	out = result;
 	return TRUE;
 }
 
@@ -402,6 +451,18 @@ BOOL CreateDirectoryTree(const char *path)
 	StrReplaceAll(all, "/", "\\");
 	if (DirectoryExists(path))
 		return TRUE;
+	// (Not in the original.) With auto-rename on, folder names FATX can't
+	// hold are made legal the way MakeFatxPath makes them, so the files the
+	// callers then put in them (through MakeFatxPath) land in these folders.
+	// Without it, such a folder couldn't be made at all.
+	std::string legal;
+	if (g_pSettings != NULL && g_pSettings->m_prefs.m_bAutoRename && MakeFatxPath((all + "\\x").c_str(), legal))
+	{
+		all = legal.substr(0, legal.size() - 2);
+		path = all.c_str();
+		if (DirectoryExists(path))
+			return TRUE;
+	}
 	// Each folder on the way, from the drive root.
 	std::string part = StrLeft(all, 3);
 	int pos = 3;

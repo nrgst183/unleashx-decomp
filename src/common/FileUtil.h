@@ -72,10 +72,13 @@ BOOL WriteBinaryFile(const char *path, const void *data, DWORD size);   // 0x000
 // Whether name is a legal FATX file name: 1-42 characters from the allowed
 // set (characters >= 0x80 pass too).
 BOOL IsFatxName(const char *name);                                    // 0x0009F0CA
-// If the file name in path isn't FATX-legal: out = path with disallowed
-// characters removed and the name shortened to 42 characters, and TRUE.
-// Otherwise FALSE and out is left alone.
+// If any part of path (after the drive) isn't FATX-legal: out = path with
+// each part made legal (MakeFatxName, folders as files), and TRUE.
+// Otherwise FALSE and out is left alone. (Rewritten: see FileUtil.cpp.)
 BOOL MakeFatxPath(const char *path, std::string &out);                // 0x000A4630
+// One name made FATX-legal: characters FATX can't hold replaced (accents
+// dropped), and cut to 42, a file keeping its extension and cd/part tag.
+std::string MakeFatxName(const std::string &name, BOOL isFile);
 // A folder that survives reboots: the save game name on the utility drive
 // U: (else X:), made with creation (0: OPEN_ALWAYS; with bit 0 set the old
 // one is deleted first). With a trailing backslash; "" when it can't be

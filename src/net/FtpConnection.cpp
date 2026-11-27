@@ -409,6 +409,13 @@ void CFTPConnection::FtpPathToXbox(std::string *out, const char *ftpPath)
 	}
 	*out = path;
 	StrReplaceAll(*out, "::", ":");
+	// (Not in the original.) With auto-rename on, every path a client names
+	// is mapped the same way (legal names are left as they are): a folder
+	// made with a name too long for FATX is then found again under its new
+	// name when the client goes into it or stores files in it.
+	CAppSettings *settings = CAppSettings::GetInstance();
+	if (settings != NULL && settings->m_prefs.m_bAutoRename && out->size() > 3 && (*out)[1] == ':')
+		MakeFatxPath(out->c_str(), *out);
 }
 
 // 0x000B6848

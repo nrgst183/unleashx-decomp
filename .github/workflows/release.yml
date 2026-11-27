@@ -1,0 +1,59 @@
+# A release: the Xbox and Windows builds (Release), each zipped, published
+# as a GitHub Release. Runs when a version tag is pushed:
+#
+#   git tag v0.40 && git push origin v0.40
+#
+# or from the Actions tab (Run workflow), giving the tag to make (it's made
+# on the commit the run is for). The release notes are GitHub's generated
+# list of changes since the last release; edit them on the release page.
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the release (e.g. v0.40)'
+        required: true
+      prerelease:
+        description: 'Mark as a pre-release'
+        type: boolean
+        default: false
+
+jobs:
+  xbox:
+    uses: ./.github/workflows/rxdk-build.yml
+  windows:
+    uses: ./.github/workflows/win32-build.yml
+
+  release:
+    needs: [xbox, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # (to make the release and its tag)
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Zips
+        run: |
+          mkdir dist
+          # Xbox: the disc image, and the files to copy to a hard disk
+          # (default.xbe with its XML files and skins).
+          (cd artifacts/unleashx-xbox && mkdir -p UnleashX && cp -r disc/. UnleashX/ \
+            && zip -qr "../../dist/UnleashX-$TAG-xbox.zip" UnleashX UnleashX.iso)
+          (cd artifacts/unleashx-xbox && zip -q "../../dist/UnleashX-$TAG-xbox-map.zip" default.map)
+          # Windows: the program and its disc folder.
+          (cd artifacts/unleashx-windows && zip -qr "../../dist/UnleashX-$TAG-windows.zip" .)
+          ls -l dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ github.event.inputs.prerelease }}
+        run: |
+          extra=""
+          if [ "$PRERELEASE" = "true" ]; then extra="--prerelease"; fi
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "UnleashX $TAG" --generate-notes $extra

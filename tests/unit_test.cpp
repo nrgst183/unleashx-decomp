@@ -9,6 +9,7 @@
 #include <string>
 
 #include "../src/common/Base64.h"
+#include "../src/common/FileUtil.h"
 #include "../src/common/FrameTime.h"
 #include "../src/common/StrUtil.h"
 #include "../src/render/Draw.h"
@@ -398,6 +399,54 @@ static void TestFrameTime()
 	SetFrameTime(1.0f / 60.0f);
 }
 
+// ---- Names too long (or odd) for FATX -------------------------------------------
+
+static void TestFatxNames()
+{
+	std::string out = "untouched";
+	// Legal paths are left alone.
+	CHECK(!MakeFatxPath("E:\\Games\\Halo\\default.xbe", out));
+	CHECK_STR(out, "untouched");
+	CHECK(!MakeFatxPath("E:\\", out));
+
+	// A long file name: 42 characters, the extension kept.
+	std::string longName = "An Extremely Long Game Name That Goes On And On Forever.iso";
+	CHECK(MakeFatxPath(("E:\\Games\\" + longName).c_str(), out));
+	std::string name = out.substr(9);
+	CHECK(name.size() >= 40 && name.size() <= 42);   // (a space at the cut is dropped)
+	CHECK_STR(name.substr(name.size() - 4), ".iso");
+	CHECK_STR(out.substr(0, 9), "E:\\Games\\");
+
+	// A disc tag at the end survives the cut, so a set's parts stay apart.
+	std::string disc1 = MakeFatxName("Some Really Long Collection Of Games Edition cd1.iso", TRUE);
+	std::string disc2 = MakeFatxName("Some Really Long Collection Of Games Edition cd2.iso", TRUE);
+	CHECK(disc1.size() <= 42 && disc2.size() <= 42);
+	CHECK_STR(disc1.substr(disc1.size() - 8), " cd1.iso");
+	CHECK(disc1 != disc2);
+	std::string part = MakeFatxName("A Very Long Archive Name For Some Big Download.part03.rar", TRUE);
+	CHECK_STR(part.substr(part.size() - 11), ".part03.rar");
+
+	// Characters FATX can't hold become '_'; accents are dropped (Latin-1 or
+	// UTF-8); any other UTF-8 character is one '_'.
+	CHECK_STR(MakeFatxName("a+b=c,d;e.txt", TRUE), "a_b_c_d_e.txt");
+	CHECK_STR(MakeFatxName("Caf\xC3\xA9 Cr\xC3\xA8me.mp3", TRUE), "Cafe Creme.mp3");
+	CHECK_STR(MakeFatxName("Caf\xE9.mp3", TRUE), "Cafe.mp3");
+	CHECK_STR(MakeFatxName("\xE6\x97\xA5\xE6\x9C\xAC.txt", TRUE), "__.txt");
+
+	// Folders too, and the same way whether they end the path or not, so a
+	// folder made under a long name is found again when a file goes in it.
+	std::string longFolder = "This Folder Name Is Much Too Long For The Xbox FATX";
+	std::string folderAlone, fileInside;
+	CHECK(MakeFatxPath(("F:\\" + longFolder).c_str(), folderAlone));
+	CHECK(MakeFatxPath(("F:\\" + longFolder + "\\save.dat").c_str(), fileInside));
+	CHECK_STR(fileInside, (folderAlone + "\\save.dat").c_str());
+	CHECK(folderAlone.size() - 3 <= 42);
+
+	// Cut names lose trailing spaces and dots.
+	std::string spaced = MakeFatxName(std::string(41, 'x') + "   more text after.txt", TRUE);
+	CHECK(spaced.size() <= 42 && spaced.find(" .") == std::string::npos);
+}
+
 int main()
 {
 	g_pSettings = CAppSettings::GetInstance();
@@ -406,6 +455,7 @@ int main()
 	TestEncodings();
 	TestScaling();
 	TestFrameTime();
+	TestFatxNames();
 	printf("unit_test: %d checks, %d failed\n", s_checks, s_failures);
 	return s_failures == 0 ? 0 : 1;
 }

@@ -2,7 +2,11 @@
 # (.eh_frame bracket, no SSE2), then imagebld (built here from RXDK-Tools)
 # makes the XBE, and the disc image is packed with extract-xiso.
 name: xbox build
-on: [push, pull_request]
+on:
+  push:
+    branches: ['**']   # (not tags: release.yml builds those)
+  pull_request:
+  workflow_call:   # (release.yml builds with it too)
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -44,3 +48,4 @@ jobs:
             build/rxdk/default.xbe
             build/rxdk/UnleashX.iso
             build/rxdk/default.map
+            build/rxdk/disc/

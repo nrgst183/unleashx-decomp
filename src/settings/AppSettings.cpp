@@ -216,7 +216,7 @@ void CAppSettings::SetDefaults()
 	m_prefs.m_bAutoVideoMode = FALSE;
 	m_prefs.m_bAutoVideoPAL60 = FALSE;
 	m_prefs.m_nMultiRegion = REGION_NONE;
-	m_prefs.m_bAutoRename = FALSE;
+	m_prefs.m_bAutoRename = TRUE;   // (changed: on, as XBMC4Gamers; names FATX can't hold are fixed, see MakeFatxPath)
 	m_prefs.m_bAutoPatch = TRUE;
 	m_prefs.m_bAbortOnError = TRUE;
 	m_prefs.m_strDefaultFolder.clear();

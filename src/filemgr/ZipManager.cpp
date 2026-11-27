@@ -327,6 +327,9 @@ unsigned __stdcall CZipManager::ExtractThread(void *param)
 				StrFormat(path, "%s%s", dir.c_str(), name.c_str());
 				StrReplaceAll(path, "\\\\", "\\");
 				StrReplaceAll(path, "/", "\\");
+				// (Not in the original: names FATX can't hold are fixed.)
+				if (zip->m_pSettings->m_prefs.m_bAutoRename)
+					MakeFatxPath(path.c_str(), path);
 				DeleteFileA(path.c_str());
 				std::string folder = path;
 				int slash = StrReverseFind(folder, "\\");
