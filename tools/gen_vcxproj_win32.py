@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates win32/UnleashX.sln, win32/UnleashX.vcxproj and its .filters: the
+"""Generates win32/UnleashX-Windows.vcxproj and its .filters, and UnitTests.vcxproj (and UnleashX.sln at the root, gen_sln.py): the
 Windows build (UnleashX as a native Windows program, xbox/win32) for Visual
 Studio 2022 or later, from the same sources and flags as Makefile.win32.
 Rerun after adding or removing source files, or after changing
@@ -13,11 +13,14 @@ import glob
 import os
 import re
 
+import gen_sln
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OUTDIR = os.path.join(ROOT, 'win32')
 
 PROJECT_GUID = '{9D2C6B4A-1E7F-4A35-B8C2-6F0E3D5A7C19}'
+TESTS_GUID = '{5B8E1F3C-2A4D-4E6B-9C7A-3D1F0E2B4A68}'
 VCXPROJ_TYPE = '{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}'
 CONFIGS = ('Debug', 'Release')
 HOST_ONLY = {'src/common/PlatformHost.cpp', 'src/net/XNetHost.cpp'}
@@ -153,7 +156,7 @@ def vcxproj(srcs):
     w('    <Keyword>Win32Proj</Keyword>')
     w('    <RootNamespace>UnleashX</RootNamespace>')
     w('    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>')
-    w('    <ProjectName>UnleashX</ProjectName>')
+    w('    <ProjectName>UnleashX-Windows</ProjectName>')
     w('    <VcpkgEnabled>false</VcpkgEnabled>')
     w('    <VcpkgEnableManifest>false</VcpkgEnableManifest>')
     w('  </PropertyGroup>')
@@ -184,31 +187,7 @@ def vcxproj(srcs):
     for c in CONFIGS:
         debug = c == 'Debug'
         w('  <ItemDefinitionGroup Condition="\'$(Configuration)|$(Platform)\'==\'%s|Win32\'">' % c)
-        w('    <ClCompile>')
-        w('      <LanguageStandard>stdcpp17</LanguageStandard>')
-        # The decompiled code is MSVC 7.1's C++: no /permissive-.
-        w('      <ConformanceMode>false</ConformanceMode>')
-        w('      <RuntimeTypeInfo>true</RuntimeTypeInfo>')
-        w('      <WarningLevel>Level3</WarningLevel>')
-        w('      <SDLCheck>false</SDLCheck>')
-        w('      <MultiProcessorCompilation>true</MultiProcessorCompilation>')
-        w('      <DisableSpecificWarnings>%s;%%(DisableSpecificWarnings)</DisableSpecificWarnings>'
-          % ';'.join(DISABLED_WARNINGS))
-        w('      <AdditionalIncludeDirectories>$(ProjectDir)..\\xbox\\win32\\include;$(ProjectDir)..\\xbox\\win32;'
-          '%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>')
-        w('      <PreprocessorDefinitions>%s;%s;%%(PreprocessorDefinitions)</PreprocessorDefinitions>'
-          % (';'.join(defines), '_DEBUG' if debug else 'NDEBUG'))
-        w('      <RuntimeLibrary>%s</RuntimeLibrary>' % ('MultiThreadedDebug' if debug else 'MultiThreaded'))
-        if debug:
-            w('      <Optimization>Disabled</Optimization>')
-            w('      <BasicRuntimeChecks>Default</BasicRuntimeChecks>')
-        else:
-            w('      <Optimization>MaxSpeed</Optimization>')
-            w('      <FunctionLevelLinking>true</FunctionLevelLinking>')
-            w('      <IntrinsicFunctions>true</IntrinsicFunctions>')
-        w('      <FloatingPointModel>Precise</FloatingPointModel>')
-        w('      <AdditionalOptions>/bigobj /Zc:strictStrings- %(AdditionalOptions)</AdditionalOptions>')
-        w('    </ClCompile>')
+        cl_compile(w, c, defines)
         w('    <ResourceCompile>')
         w('      <AdditionalIncludeDirectories>$(ProjectDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>')
         w('    </ResourceCompile>')
@@ -253,6 +232,141 @@ def vcxproj(srcs):
     return '\r\n'.join(o) + '\r\n'
 
 
+def cl_compile(w, c, defines):
+    """The compiler settings, the same for UnleashX and its unit tests."""
+    debug = c == 'Debug'
+    w('    <ClCompile>')
+    w('      <LanguageStandard>stdcpp17</LanguageStandard>')
+    # The decompiled code is MSVC 7.1's C++: no /permissive-.
+    w('      <ConformanceMode>false</ConformanceMode>')
+    w('      <RuntimeTypeInfo>true</RuntimeTypeInfo>')
+    w('      <WarningLevel>Level3</WarningLevel>')
+    w('      <SDLCheck>false</SDLCheck>')
+    w('      <MultiProcessorCompilation>true</MultiProcessorCompilation>')
+    w('      <DisableSpecificWarnings>%s;%%(DisableSpecificWarnings)</DisableSpecificWarnings>'
+      % ';'.join(DISABLED_WARNINGS))
+    w('      <AdditionalIncludeDirectories>$(ProjectDir)..\\xbox\\win32\\include;$(ProjectDir)..\\xbox\\win32;'
+      '%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>')
+    w('      <PreprocessorDefinitions>%s;%s;%%(PreprocessorDefinitions)</PreprocessorDefinitions>'
+      % (';'.join(defines), '_DEBUG' if debug else 'NDEBUG'))
+    w('      <RuntimeLibrary>%s</RuntimeLibrary>' % ('MultiThreadedDebug' if debug else 'MultiThreaded'))
+    if debug:
+        w('      <Optimization>Disabled</Optimization>')
+        w('      <BasicRuntimeChecks>Default</BasicRuntimeChecks>')
+    else:
+        w('      <Optimization>MaxSpeed</Optimization>')
+        w('      <FunctionLevelLinking>true</FunctionLevelLinking>')
+        w('      <IntrinsicFunctions>true</IntrinsicFunctions>')
+    w('      <FloatingPointModel>Precise</FloatingPointModel>')
+    w('      <AdditionalOptions>/bigobj /Zc:strictStrings- %(AdditionalOptions)</AdditionalOptions>')
+    w('    </ClCompile>')
+
+
+def unit_tests_vcxproj():
+    """UnitTests: tests/unit_test.cpp, linked against UnleashX's own objects
+    (all but its entry points), and run after every build, its failures in
+    the error list."""
+    o = []
+    w = o.append
+    w('<?xml version="1.0" encoding="utf-8"?>')
+    w('<!-- Generated by tools/gen_vcxproj_win32.py; rerun it rather than editing. -->')
+    w('<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">')
+    w('  <ItemGroup Label="ProjectConfigurations">')
+    for c in CONFIGS:
+        w('    <ProjectConfiguration Include="%s|Win32">' % c)
+        w('      <Configuration>%s</Configuration>' % c)
+        w('      <Platform>Win32</Platform>')
+        w('    </ProjectConfiguration>')
+    w('  </ItemGroup>')
+    w('  <PropertyGroup Label="Globals">')
+    w('    <VCProjectVersion>17.0</VCProjectVersion>')
+    w('    <ProjectGuid>%s</ProjectGuid>' % TESTS_GUID)
+    w('    <Keyword>Win32Proj</Keyword>')
+    w('    <RootNamespace>UnitTests</RootNamespace>')
+    w('    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>')
+    w('    <ProjectName>UnitTests</ProjectName>')
+    w('    <VcpkgEnabled>false</VcpkgEnabled>')
+    w('    <VcpkgEnableManifest>false</VcpkgEnableManifest>')
+    w('  </PropertyGroup>')
+    w('  <Import Project="$(VCTargetsPath)\\Microsoft.Cpp.Default.props" />')
+    for c in CONFIGS:
+        w('  <PropertyGroup Condition="\'$(Configuration)|$(Platform)\'==\'%s|Win32\'" Label="Configuration">' % c)
+        w('    <ConfigurationType>Application</ConfigurationType>')
+        w('    <UseDebugLibraries>%s</UseDebugLibraries>' % ('true' if c == 'Debug' else 'false'))
+        w('    <PlatformToolset>v143</PlatformToolset>')
+        w('    <CharacterSet>MultiByte</CharacterSet>')
+        if c == 'Release':
+            w('    <WholeProgramOptimization>false</WholeProgramOptimization>')
+        w('  </PropertyGroup>')
+    w('  <Import Project="$(VCTargetsPath)\\Microsoft.Cpp.props" />')
+    w('  <ImportGroup Label="ExtensionSettings" />')
+    w('  <ImportGroup Label="Shared" />')
+    w('  <ImportGroup Label="PropertySheets">')
+    w('    <Import Project="$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props" '
+      'Condition="exists(\'$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props\')" Label="LocalAppDataPlatform" />')
+    w('  </ImportGroup>')
+    w('  <PropertyGroup Label="UserMacros" />')
+    w('  <PropertyGroup>')
+    w('    <OutDir>$(ProjectDir)..\\build\\vs-win32\\$(Configuration)\\tests\\</OutDir>')
+    w('    <IntDir>$(ProjectDir)..\\build\\vs-win32\\$(Configuration)\\tests\\obj\\</IntDir>')
+    w('    <TargetName>unit_test</TargetName>')
+    # UnleashX's objects, and the library made of them.
+    w('    <UnleashXObjDir>$(ProjectDir)..\\build\\vs-win32\\$(Configuration)\\obj\\</UnleashXObjDir>')
+    w('    <UnleashXCodeLib>$(IntDir)UnleashXCode.lib</UnleashXCodeLib>')
+    w('    <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>')
+    # (Visual Studio's own up-to-date check sees only this project's files,
+    # not UnleashX's objects, so it would skip relinking the tests after a
+    # change to UnleashX.)
+    w('    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>')
+    w('  </PropertyGroup>')
+    for c in CONFIGS:
+        w('  <ItemDefinitionGroup Condition="\'$(Configuration)|$(Platform)\'==\'%s|Win32\'">' % c)
+        cl_compile(w, c, DEFINES)
+        w('    <Link>')
+        w('      <SubSystem>Console</SubSystem>')
+        w('      <GenerateDebugInformation>true</GenerateDebugInformation>')
+        w('      <AdditionalDependencies>$(UnleashXCodeLib);%s;%%(AdditionalDependencies)</AdditionalDependencies>'
+          % ';'.join(LIBS))
+        w('      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>')
+        w('    </Link>')
+        w('  </ItemDefinitionGroup>')
+    w('  <ItemGroup>')
+    w('    <ClCompile Include="..\\tests\\unit_test.cpp" />')
+    w('  </ItemGroup>')
+    # Built after UnleashX, for its objects; nothing of it is linked as is.
+    w('  <ItemGroup>')
+    w('    <ProjectReference Include="UnleashX-Windows.vcxproj">')
+    w('      <Project>%s</Project>' % PROJECT_GUID)
+    w('      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>')
+    w('      <LinkLibraryDependencies>false</LinkLibraryDependencies>')
+    w('    </ProjectReference>')
+    w('  </ItemGroup>')
+    w('  <Import Project="$(VCTargetsPath)\\Microsoft.Cpp.targets" />')
+    # UnleashX's objects as a library, less its entry points (WinMain and the
+    # dashboard's main): the linker takes only what the tests need. Made
+    # every build (a second or so), from the objects as they are then: an
+    # up-to-date check here went by the objects found when the project was
+    # loaded, before UnleashX was built, and linked the tests against an old
+    # library.
+    w('  <Target Name="UnleashXCodeLib" BeforeTargets="Link">')
+    w('    <ItemGroup>')
+    w('      <UnleashXObjFound Include="$(UnleashXObjDir)*.obj" '
+      'Exclude="$(UnleashXObjDir)src_app_Main.obj;$(UnleashXObjDir)xbox_win32_XMain.obj" />')
+    w('    </ItemGroup>')
+    w('    <Error Condition="\'@(UnleashXObjFound)\' == \'\'" Text="No UnleashX objects in $(UnleashXObjDir): build UnleashX first." />')
+    w('    <MakeDir Directories="$(IntDir)" />')
+    w('    <WriteLinesToFile File="$(IntDir)UnleashXCode.rsp" Lines="@(UnleashXObjFound->\'&quot;%(FullPath)&quot;\')" '
+      'Overwrite="true" />')
+    w('    <Exec Command="lib /nologo /out:&quot;$(UnleashXCodeLib)&quot; @&quot;$(IntDir)UnleashXCode.rsp&quot;" />')
+    w('  </Target>')
+    # Run them; a failed check is an error (file(line): error) in the list.
+    w('  <Target Name="RunUnitTests" AfterTargets="Build">')
+    w('    <Exec Command="&quot;$(TargetPath)&quot;" WorkingDirectory="$(ProjectDir)" />')
+    w('  </Target>')
+    w('</Project>')
+    return '\r\n'.join(o) + '\r\n'
+
+
 def filters(srcs):
     groups = sorted({s.group for s in srcs} | {g for _, g in headers()} | {'xbox\\win32'})
     allg = set()
@@ -289,35 +403,17 @@ def filters(srcs):
     return '\r\n'.join(o) + '\r\n'
 
 
-def solution():
-    lines = ['', 'Microsoft Visual Studio Solution File, Format Version 12.00',
-             '# Visual Studio Version 17', 'VisualStudioVersion = 17.0.31903.59',
-             'MinimumVisualStudioVersion = 10.0.40219.1',
-             'Project("%s") = "UnleashX", "UnleashX.vcxproj", "%s"' % (VCXPROJ_TYPE, PROJECT_GUID),
-             'EndProject', 'Global',
-             '\tGlobalSection(SolutionConfigurationPlatforms) = preSolution']
-    for c in CONFIGS:
-        lines.append('\t\t%s|x86 = %s|x86' % (c, c))
-    lines.append('\tEndGlobalSection')
-    lines.append('\tGlobalSection(ProjectConfigurationPlatforms) = postSolution')
-    for c in CONFIGS:
-        lines.append('\t\t%s.%s|x86.ActiveCfg = %s|Win32' % (PROJECT_GUID, c, c))
-        lines.append('\t\t%s.%s|x86.Build.0 = %s|Win32' % (PROJECT_GUID, c, c))
-    lines += ['\tEndGlobalSection', '\tGlobalSection(SolutionProperties) = preSolution',
-              '\t\tHideSolutionNode = FALSE', '\tEndGlobalSection', 'EndGlobal']
-    return '﻿' + '\r\n'.join(lines) + '\r\n'
-
-
 def main():
     srcs = sources()
     os.makedirs(OUTDIR, exist_ok=True)
-    with open(os.path.join(OUTDIR, 'UnleashX.vcxproj'), 'w', newline='') as f:
+    with open(os.path.join(OUTDIR, 'UnleashX-Windows.vcxproj'), 'w', newline='') as f:
         f.write(vcxproj(srcs))
-    with open(os.path.join(OUTDIR, 'UnleashX.vcxproj.filters'), 'w', newline='') as f:
+    with open(os.path.join(OUTDIR, 'UnleashX-Windows.vcxproj.filters'), 'w', newline='') as f:
         f.write(filters(srcs))
-    with open(os.path.join(OUTDIR, 'UnleashX.sln'), 'w', newline='', encoding='utf-8') as f:
-        f.write(solution())
-    print('win32/UnleashX.vcxproj: %d sources' % len(srcs))
+    with open(os.path.join(OUTDIR, 'UnitTests.vcxproj'), 'w', newline='') as f:
+        f.write(unit_tests_vcxproj())
+    print('win32/UnleashX-Windows.vcxproj: %d sources' % len(srcs))
+    gen_sln.main()   # (the solution at the root, with the Xbox build)
 
 
 if __name__ == '__main__':

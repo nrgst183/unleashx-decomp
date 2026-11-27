@@ -467,7 +467,25 @@ HRESULT CUnleashX::Initialize()
 		m_d3dpp.BackBufferFormat = D3DFMT_LIN_X1R5G5B5;
 		reset = TRUE;
 	}
-	D3DXMatrixPerspectiveFovLH(XDK_CAST(D3DXMATRIX *, m_projMatrix), 1.1423974f, 4.0f / 3.0f, 1.0f, 200.0f);
+#ifndef UX_WIN32
+	// (Not in the original, which stretched the skins' 4:3 layout across a
+	// 16:9 picture: the orb, kept round, then sat a third further from the
+	// menu than the skin has it. As the Windows build: the layout scaled
+	// evenly and centered, and the 3D view 16:9. The 4:3 modes are as they
+	// were.)
+	if ((m_d3dpp.Flags & D3DPRESENTFLAG_WIDESCREEN) && m_dwScreenWidth != 0 && m_dwScreenHeight != 0)
+	{
+		g_fPictureAspect = 16.0f / 9.0f;
+		g_fPixelShape = g_fPictureAspect * (float)m_dwScreenHeight / (float)m_dwScreenWidth;
+	}
+	else
+	{
+		g_fPictureAspect = 0.0f;
+		g_fPixelShape = 1.0f;
+	}
+#endif
+	D3DXMatrixPerspectiveFovLH(XDK_CAST(D3DXMATRIX *, m_projMatrix), 1.1423974f,
+	                           g_fPictureAspect > 0.0f ? g_fPictureAspect : 4.0f / 3.0f, 1.0f, 200.0f);
 	g_pd3dDevice->SetTransform(D3DTS_PROJECTION, XDK_CAST(const D3DMATRIX *, m_projMatrix));
 
 	// Sound: 5.1 if the Xbox is on stereo, the HRTF and the effects image
@@ -767,7 +785,7 @@ HRESULT CUnleashX::Initialize()
 			m_d3dpp.BackBufferHeight = m_dwScreenHeight;
 			try
 			{
-				g_pd3dDevice->Reset(XDK_CAST(D3DPRESENT_PARAMETERS *, &m_d3dpp));
+				ResetDevice(XDK_CAST(D3DPRESENT_PARAMETERS *, &m_d3dpp));
 			}
 			catch (...)
 			{

@@ -131,11 +131,45 @@ static HRESULT CreateShaders()
 	return S_OK;
 }
 
+// (Not in the original.) Whether the screen is larger than the fonts were
+// drawn for (640x480): the HD modes, and always in the Windows build (a
+// window of any size).
+static BOOL ScreenIsLarge()
+{
+#ifdef UX_WIN32
+	return TRUE;
+#else
+	D3DDISPLAYMODE mode;
+	D3DDevice_GetDisplayMode(&mode);
+	if (mode.Width > 720 || mode.Height > 576)
+		return TRUE;
+	// The fonts load (on the resources thread) before the device is set to
+	// the HD mode, so also by what the Xbox is set up for: the HD AV pack
+	// and 720p or 1080i allowed.
+	return XGetAVPack() == XC_AV_PACK_HDTV &&
+	       (XGetVideoFlags() & (XC_VIDEO_FLAGS_HDTV_720p | XC_VIDEO_FLAGS_HDTV_1080i)) != 0;
+#endif
+}
+
 // 0x00099EC9: the font texture is the .xpr's first resource; the glyph
 // data follows it.
+// (Not in the original: on a large screen, a sharper copy when there is one,
+// Name@2x.xpr beside Name.xpr: the same glyph table with a texture twice the
+// size, the glyphs drawn again at it (tools/xprfont.py). It lays out the
+// same, so nothing else knows. At 640x480 the plain one, which is the same
+// at that size and a quarter of the memory.)
 HRESULT CXBFont::Create(const char *fileName, DWORD resourceOffset)
 {
-	if (FAILED(m_xprResource.Create(fileName, 0, NULL)))
+	BOOL loaded = FALSE;
+	size_t length = strlen(fileName);
+	if (length > 4 && length < MAX_PATH - 4 && _stricmp(fileName + length - 4, ".xpr") == 0 && ScreenIsLarge())
+	{
+		char sharper[MAX_PATH];
+		memcpy(sharper, fileName, length - 4);
+		strcpy(sharper + length - 4, "@2x.xpr");
+		loaded = SUCCEEDED(m_xprResource.Create(sharper, 0, NULL));
+	}
+	if (!loaded && FAILED(m_xprResource.Create(fileName, 0, NULL)))
 		return E_FAIL;
 	IDirect3DTexture8 *texture = (IDirect3DTexture8 *)m_xprResource.GetResource(0);
 	return Create(texture, m_xprResource.m_pSysMemData + resourceOffset + 0x14);

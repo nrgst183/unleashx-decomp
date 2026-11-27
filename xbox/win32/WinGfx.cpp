@@ -31,6 +31,11 @@ static bool s_ownShape;
 // handed over when it ends.
 static bool s_sizing;
 static LARGE_INTEGER s_lastVBlank;
+// Frame pacing (see PaceFrame): the window's monitor's refresh rate (0: look
+// it up again), the next frame's time, and the timer slept on until then.
+static UINT s_refresh;
+static LONGLONG s_nextFrame;
+static HANDLE s_frameTimer;
 
 // (Each file has its own: in an unnamed namespace, so they stay apart.)
 namespace
@@ -92,6 +97,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
 		break;
 	case WM_EXITSIZEMOVE:
 		s_sizing = false;
+		s_refresh = 0;   // (perhaps on another monitor now)
+		break;
+	case WM_DISPLAYCHANGE:
+		s_refresh = 0;
 		break;
 	case WM_SIZE:
 		if (wParam != SIZE_MINIMIZED)
@@ -337,6 +346,30 @@ int UxGfxReset(int width, int height, int vsync)
 	return SUCCEEDED(hr);
 }
 
+static LONGLONG TicksPerSecond();
+static void PaceFrame();
+
+// With UNLEASHX_LOG_FPS set, the frame rate in the log every 5 seconds.
+static void LogFrameRate(LONGLONG now)
+{
+	static int s_enabled = -1;
+	static LONGLONG s_since;
+	static DWORD s_frames;
+	if (s_enabled < 0)
+		s_enabled = GetEnvironmentVariableA("UNLEASHX_LOG_FPS", NULL, 0) != 0;
+	if (!s_enabled)
+		return;
+	if (s_since == 0)
+		s_since = now;
+	s_frames++;
+	if (now - s_since >= TicksPerSecond() * 5)
+	{
+		UxLog("%.1f frames a second", (double)s_frames * TicksPerSecond() / (double)(now - s_since));
+		s_since = now;
+		s_frames = 0;
+	}
+}
+
 void UxGfxPresent(void)
 {
 	{
@@ -361,20 +394,99 @@ void UxGfxPresent(void)
 		s_device->BeginScene();
 		s_inScene = true;
 	}
+	// (No 60 fps cap: the frames follow the monitor's refresh, 144 Hz on a 144
+	// Hz monitor. The animations go by time.)
+	PaceFrame();
 	UxPumpMessages();
-	// (No 60 fps cap: with vsync the frames follow the monitor's refresh, 144
-	// Hz on a 144 Hz monitor; with "fast refresh" as fast as it draws. The
-	// animations go by time.)
 	QueryPerformanceCounter(&s_lastVBlank);
+	LogFrameRate(s_lastVBlank.QuadPart);
 }
 
-// The monitor's refresh rate, for the vertical blank waits.
+// The refresh rate of the monitor the window is on, for the frame pacing and
+// the vertical blank waits.
 static UINT RefreshRate()
 {
-	D3DDISPLAYMODE mode;
-	if (s_d3d != NULL && SUCCEEDED(s_d3d->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &mode)) && mode.RefreshRate >= 24)
-		return mode.RefreshRate;
-	return 60;
+	if (s_refresh == 0)
+	{
+		s_refresh = 60;
+		MONITORINFOEXA info;
+		info.cbSize = sizeof(info);
+		DEVMODEA mode;
+		mode.dmSize = sizeof(mode);
+		mode.dmDriverExtra = 0;
+		if (s_hwnd != NULL && GetMonitorInfoA(MonitorFromWindow(s_hwnd, MONITOR_DEFAULTTONEAREST), &info) &&
+		    EnumDisplaySettingsA(info.szDevice, ENUM_CURRENT_SETTINGS, &mode) && mode.dmDisplayFrequency >= 24)
+			s_refresh = mode.dmDisplayFrequency;
+	}
+	return s_refresh;
+}
+
+static LONGLONG Ticks()
+{
+	LARGE_INTEGER now;
+	QueryPerformanceCounter(&now);
+	return now.QuadPart;
+}
+
+static LONGLONG TicksPerSecond()
+{
+	static LARGE_INTEGER s_frequency;
+	if (s_frequency.QuadPart == 0)
+		QueryPerformanceFrequency(&s_frequency);
+	return s_frequency.QuadPart;
+}
+
+// Sleeps until the performance counter reaches deadline: on a high
+// resolution timer (Windows 10 1803 on, about 0.5 ms late at most), else
+// Sleep (1 ms ticks, timeBeginPeriod).
+static void SleepUntil(LONGLONG deadline)
+{
+	if (s_frameTimer == NULL)
+	{
+		s_frameTimer = CreateWaitableTimerExW(NULL, NULL, 0x2 /* CREATE_WAITABLE_TIMER_HIGH_RESOLUTION */,
+		                                      TIMER_ALL_ACCESS);
+		if (s_frameTimer == NULL)
+			s_frameTimer = INVALID_HANDLE_VALUE;
+	}
+	LONGLONG remaining = deadline - Ticks();
+	if (remaining <= 0)
+		return;
+	if (s_frameTimer != INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER due;
+		due.QuadPart = -(remaining * 10000000 / TicksPerSecond());   // (relative, in 100 ns)
+		if (due.QuadPart < 0 && SetWaitableTimer(s_frameTimer, &due, 0, NULL, NULL, FALSE))
+		{
+			WaitForSingleObject(s_frameTimer, INFINITE);
+			return;
+		}
+	}
+	Sleep((DWORD)(remaining * 1000 / TicksPerSecond()));
+}
+
+// (Not in the original, whose frames the Xbox's GPU paced.) A frame at most
+// every refresh of the monitor. Without vsync ("Faster Refresh Rate", the
+// dash's default) Direct3D would draw hundreds of frames a second that
+// Windows' compositor throws away, using a core or two (the driver's thread
+// as much as the dash's) for nothing; as fast as the screen shows them, a
+// frame still goes out as soon as it's drawn. Minimized, 10 a second (the
+// music, the FTP server and the rest still run).
+static void PaceFrame()
+{
+	bool minimized = s_hwnd != NULL && IsIconic(s_hwnd);
+	if (!minimized && s_pp.PresentationInterval == D3DPRESENT_INTERVAL_ONE)
+	{
+		s_nextFrame = 0;   // (Present waited for the vertical blank)
+		return;
+	}
+	LONGLONG period = TicksPerSecond() / (minimized ? 10 : RefreshRate());
+	LONGLONG now = Ticks();
+	// After a slow frame (or the first), from now: no rush of frames to
+	// catch up.
+	if (s_nextFrame == 0 || now - s_nextFrame > period)
+		s_nextFrame = now;
+	s_nextFrame += period;
+	SleepUntil(s_nextFrame);
 }
 
 // A millisecond clock for the dash's GetTickCount: Windows' own only moves
@@ -398,23 +510,16 @@ extern "C" DWORD WINAPI UxGetTickCount(void)
 void UxGfxWaitVBlank(void)
 {
 	// About one of the monitor's refreshes since the last one.
-	static UINT s_refresh;
-	if (s_refresh == 0)
-		s_refresh = RefreshRate();
-	LARGE_INTEGER now, frequency;
-	QueryPerformanceFrequency(&frequency);
-	QueryPerformanceCounter(&now);
-	LONGLONG frame = frequency.QuadPart / s_refresh;
-	LONGLONG next = s_lastVBlank.QuadPart + frame;
-	if (now.QuadPart < next)
+	LONGLONG now = Ticks();
+	LONGLONG next = s_lastVBlank.QuadPart + TicksPerSecond() / RefreshRate();
+	if (now < next)
 	{
-		DWORD ms = (DWORD)((next - now.QuadPart) * 1000 / frequency.QuadPart);
-		Sleep(ms);
+		SleepUntil(next);
 		s_lastVBlank.QuadPart = next;
 	}
 	else
 	{
-		s_lastVBlank = now;
+		s_lastVBlank.QuadPart = now;
 	}
 	UxPumpMessages();
 }

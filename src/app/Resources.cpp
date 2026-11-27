@@ -24,6 +24,19 @@
 #define MEDIA_FILE_SIZE 0x5A21F
 #endif
 
+// (Fix: the section's own size, from the XBE's section header, and the
+// compiled-in one only if it can't be had. With only the compiled-in one, an
+// XBE whose zip changed without this file being rebuilt (the size is a
+// define, which builds don't always track) handed the unzipper a wrong
+// length: it couldn't find the zip's directory, and the dash fell back to
+// the Media.dat copy.)
+static DWORD MediaFileSize()
+{
+	HANDLE section = XGetSectionHandle("MEDIA_FILE");
+	DWORD size = section != NULL && section != INVALID_HANDLE_VALUE ? XGetSectionSize(section) : 0;
+	return size != 0 ? size : (DWORD)MEDIA_FILE_SIZE;
+}
+
 // A bitmap font is taken as missing when its line is under 5 pixels.
 static const float MIN_FONT_HEIGHT = 5.0f;
 
@@ -119,12 +132,13 @@ static BOOL UnpackMedia(const char *folder)
 	std::string path = folder;
 	path.append("iMedia.dat");
 	std::string stamp = ReadTextFile(path.c_str());
-	if (stamp.size() != 0 && (int)stamp.size() < 12 && atol(stamp.c_str()) == MEDIA_FILE_SIZE)
+	DWORD mediaSize = MediaFileSize();
+	if (stamp.size() != 0 && (int)stamp.size() < 12 && (DWORD)atol(stamp.c_str()) == mediaSize)
 		return TRUE;
 
 	BOOL ok = TRUE;
 	void *media = XLoadSection("MEDIA_FILE");
-	HZIP zip = OpenZip(media, MEDIA_FILE_SIZE, ZIP_MEMORY);
+	HZIP zip = OpenZip(media, mediaSize, ZIP_MEMORY);
 	if (zip == NULL && media != NULL)
 	{
 		// Unzipping from memory failed: unzip a copy on disk (Media.dat).
@@ -136,7 +150,11 @@ static BOOL UnpackMedia(const char *folder)
 		                          FILE_ATTRIBUTE_NORMAL, NULL);
 		if (file != INVALID_HANDLE_VALUE)
 		{
-			WriteFile(file, media, MEDIA_FILE_SIZE, NULL, NULL);
+			// (Fix: somewhere for the byte count. The original passed NULL,
+			// which the Xbox's WriteFile doesn't allow: the console stopped
+			// with a bug check here.)
+			DWORD written = 0;
+			WriteFile(file, media, mediaSize, &written, NULL);
 			CloseHandle(file);
 			zip = OpenZip((void *)path.c_str(), 0, ZIP_FILENAME);
 		}
@@ -170,7 +188,7 @@ static BOOL UnpackMedia(const char *folder)
 		CloseZip(zip);
 		path = folder;
 		path.append("iMedia.dat");
-		StrFormat(stamp, "%d", MEDIA_FILE_SIZE);
+		StrFormat(stamp, "%d", (int)mediaSize);
 		WriteTextFile(path.c_str(), stamp.c_str(), FALSE);
 	}
 	XFreeSection("MEDIA_FILE");

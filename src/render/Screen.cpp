@@ -45,31 +45,35 @@ SScreenRect GetScreenRect()
 }
 
 float g_fPictureAspect;
+float g_fPixelShape = 1.0f;
 
-// ScaleToScreen when the Windows build draws at its window's size: one scale
-// for both axes (the smaller), the layout centered in the window. Everything
-// does, full-layout images too: a skin's panels are often one 640x480 image
-// with its texts placed over it, and stretching it alone pulled the texts
-// out of their panels. (The background picture fills the window through
-// DrawTextureFullScreen, and the globe is 3D.)
+// ScaleToScreen when the picture isn't the skin's 4:3 (the Windows build's
+// window, the Xbox's widescreen modes): one scale for both axes (the
+// smaller), the layout centered. Everything does, full-layout images too: a
+// skin's panels are often one 640x480 image with its texts placed over it,
+// and stretching it alone pulled the texts out of their panels. (The
+// background picture fills the screen through DrawTextureFullScreen, and the
+// globe is 3D.) It works in the picture's own units, so wide pixels (720x480
+// shown at 16:9) take fewer of them across.
 static void ScaleEvenly(float *x, float *width, float *y, float *height, BOOL base640x480)
 {
 	const SViewport &viewport = g_pSettings->m_viewport;
 	float skinWidth = (float)g_pSettings->m_nSkinWidth;
 	float skinHeight = (float)g_pSettings->m_nSkinHeight;
-	float screenWidth = (float)viewport.Width;
+	float pixel = g_fPixelShape > 0.0f ? g_fPixelShape : 1.0f;
+	float screenWidth = (float)viewport.Width * pixel;   // (in square units)
 	float screenHeight = (float)viewport.Height;
 	float scale = screenWidth / skinWidth < screenHeight / skinHeight ? screenWidth / skinWidth
 	                                                                  : screenHeight / skinHeight;
 	float scale640 = screenWidth / 640.0f < screenHeight / 480.0f ? screenWidth / 640.0f : screenHeight / 480.0f;
 	float sizeScale = base640x480 ? scale640 : scale;
-	float offsetX = (screenWidth - skinWidth * scale) * 0.5f + (float)viewport.X;
+	float offsetX = (screenWidth - skinWidth * scale) * 0.5f;
 	float offsetY = (screenHeight - skinHeight * scale) * 0.5f + (float)viewport.Y;
 
 	if (x != NULL)
-		*x = scale * *x + offsetX;
+		*x = (scale * *x + offsetX) / pixel + (float)viewport.X;
 	if (width != NULL && *width != 0.0f)
-		*width = sizeScale * *width;
+		*width = sizeScale * *width / pixel;
 	if (y != NULL)
 		*y = scale * *y + offsetY;
 	if (height != NULL && *height != 0.0f)

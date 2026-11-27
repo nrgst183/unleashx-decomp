@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates rxdk/UnleashX.sln, rxdk/UnleashX.vcxproj and its .filters: the
+"""Generates rxdk/UnleashX-Xbox.vcxproj and its .filters (and UnleashX.sln at the root, gen_sln.py): the
 RXDK build for Visual Studio 2022/2026 with the RXDK extension
 (github.com/Team-Resurgent/RXDK-VS20XX), from the same sources and flags as
 Makefile.rxdk. Rerun after adding or removing source files, or after changing
@@ -14,6 +14,8 @@ options, so the third-party code keeps its own flags as in the Makefile.
 import glob
 import os
 import re
+
+import gen_sln
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -184,7 +186,10 @@ def headers():
 def vcxproj(srcs, ux_defines, ux_options):
     media = os.path.getsize(os.path.join(ROOT, 'assets/media.zip'))
     skins = os.path.getsize(os.path.join(ROOT, 'assets/internal_skins.zip'))
-    defines = ux_defines + ['MEDIA_FILE_SIZE=%d' % media, 'INT_SKINS_SIZE=%d' % skins]
+    # (_XBOX and XBOX: RXDK's clang command line has them, but IntelliSense
+    # sees only the project's own; without them Platform.h took its host
+    # branch there and nothing in the code resolved.)
+    defines = ['_XBOX', 'XBOX'] + ux_defines + ['MEDIA_FILE_SIZE=%d' % media, 'INT_SKINS_SIZE=%d' % skins]
     libs = [l + '$(D)' for l in makefile_var('SDK_LIBS')]
     o = []
     w = o.append
@@ -207,7 +212,7 @@ def vcxproj(srcs, ux_defines, ux_options):
     w('    <ApplicationTypeRevision>Current</ApplicationTypeRevision>')
     w('    <RootNamespace>UnleashX</RootNamespace>')
     w('    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>')
-    w('    <ProjectName>UnleashX</ProjectName>')
+    w('    <ProjectName>UnleashX-Xbox</ProjectName>')
     # A machine-wide `vcpkg integrate install` would otherwise add its
     # (Windows) libraries to the Xbox link.
     w('    <VcpkgEnabled>false</VcpkgEnabled>')
@@ -333,35 +338,15 @@ def filters(srcs):
     return '\r\n'.join(o) + '\r\n'
 
 
-def solution():
-    lines = ['', 'Microsoft Visual Studio Solution File, Format Version 12.00',
-             '# Visual Studio Version 17', 'VisualStudioVersion = 17.0.31903.59',
-             'MinimumVisualStudioVersion = 10.0.40219.1',
-             'Project("%s") = "UnleashX", "UnleashX.vcxproj", "%s"' % (VCXPROJ_TYPE, PROJECT_GUID),
-             'EndProject', 'Global',
-             '\tGlobalSection(SolutionConfigurationPlatforms) = preSolution']
-    for c in CONFIGS:
-        lines.append('\t\t%s|Xbox = %s|Xbox' % (c, c))
-    lines.append('\tEndGlobalSection')
-    lines.append('\tGlobalSection(ProjectConfigurationPlatforms) = postSolution')
-    for c in CONFIGS:
-        lines.append('\t\t%s.%s|Xbox.ActiveCfg = %s|Xbox' % (PROJECT_GUID, c, c))
-        lines.append('\t\t%s.%s|Xbox.Build.0 = %s|Xbox' % (PROJECT_GUID, c, c))
-    lines += ['\tEndGlobalSection', '\tGlobalSection(SolutionProperties) = preSolution',
-              '\t\tHideSolutionNode = FALSE', '\tEndGlobalSection', 'EndGlobal']
-    return '﻿' + '\r\n'.join(lines) + '\r\n'
-
-
 def main():
     srcs, ux_defines, ux_options = sources()
     os.makedirs(OUTDIR, exist_ok=True)
-    with open(os.path.join(OUTDIR, 'UnleashX.vcxproj'), 'w', newline='') as f:
+    with open(os.path.join(OUTDIR, 'UnleashX-Xbox.vcxproj'), 'w', newline='') as f:
         f.write(vcxproj(srcs, ux_defines, ux_options))
-    with open(os.path.join(OUTDIR, 'UnleashX.vcxproj.filters'), 'w', newline='') as f:
+    with open(os.path.join(OUTDIR, 'UnleashX-Xbox.vcxproj.filters'), 'w', newline='') as f:
         f.write(filters(srcs))
-    with open(os.path.join(OUTDIR, 'UnleashX.sln'), 'w', newline='', encoding='utf-8') as f:
-        f.write(solution())
-    print('rxdk/UnleashX.vcxproj: %d sources' % len(srcs))
+    print('rxdk/UnleashX-Xbox.vcxproj: %d sources' % len(srcs))
+    gen_sln.main()   # (the solution at the root, with the Windows build)
 
 
 if __name__ == '__main__':

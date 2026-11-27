@@ -39,7 +39,8 @@ third-party sources, the disc tool) except the Xbox SDK. Two work:
 
 * **[RXDK](https://github.com/Team-Resurgent/RXDK-VS20XX)**, the open SDK,
   with nothing of Microsoft's. In Visual Studio 2022/2026 with the RXDK
-  extension, open `rxdk/UnleashX.sln`; or, with RXDK installed:
+  extension, open `UnleashX.sln` and pick the **Xbox** platform; or, with
+  RXDK installed:
 
   ```sh
   git clone https://github.com/desukuran/unleashx-decomp.git && cd unleashx-decomp
@@ -59,9 +60,9 @@ third-party sources, the disc tool) except the Xbox SDK. Two work:
 The output is `default.xbe` and a bootable disc, `UnleashX.iso`, in
 `build/rxdk/` or `build/xbox/`.
 
-* **Windows (a PC build):** `win32/UnleashX.sln` in Visual Studio 2022 builds
-  the dash as a native Windows program, with the Xbox's drives as folders
-  ([details](BUILDING.md#for-windows)).
+* **Windows (a PC build):** `UnleashX.sln` in Visual Studio 2022, platform
+  **x86**, builds the dash as a native Windows program, with the Xbox's drives
+  as folders, and runs the unit tests ([details](BUILDING.md#for-windows)).
 
 * **WMV videos (optional):** the WMV decoder only shipped with XDK 4xxx.
   Add `WMVDEC=/path/to/xdk-4361`, or any XDK 4xxx; without it, `.xmv`

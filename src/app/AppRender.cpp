@@ -354,6 +354,8 @@ present:
 		}
 		m_bTakeScreenshot = FALSE;
 	}
+	// (The frames are paced by the device's parameters: see
+	// PacedPresentParameters, Draw.h.)
 	try
 	{
 		g_pd3dDevice->Swap(0);

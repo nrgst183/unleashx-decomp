@@ -30,15 +30,28 @@ void DrawShadeFullScreen(IDirect3DTexture8 *texture, float alpha);   // 0x000A03
 // relative to 640x480 instead. Quirk: nothing changes (not even the
 // offset) when the screen is the skin's size; zero sizes stay zero.
 void ScaleToScreen(float *x, float *width, float *y, float *height, BOOL base640x480);   // 0x0009E34E
-// The picture's shape (width / height) when the Windows build draws at its
-// window's size, else 0 (the Xbox's modes). Then ScaleToScreen scales evenly
-// (the layout centered, at its own shape, rather than stretched) and the 3D
-// view has the window's shape. (Screen.cpp)
+// The picture's shape (width / height) as seen, when it isn't the skins'
+// 4:3: the Windows build's window, the Xbox's widescreen modes (16:9); else
+// 0 (the Xbox's 4:3 modes, as the original). Then ScaleToScreen scales
+// evenly (the layout centered, at its own shape, rather than stretched) and
+// the 3D view has the picture's shape. (Screen.cpp)
 extern float g_fPictureAspect;
+// A pixel's width as seen, by its height: 1, but less than 1 for 720x480
+// shown at 16:9. (Screen.cpp)
+extern float g_fPixelShape;
 // The same for whole numbers (zeros stay zero).
 void ScaleToScreenInt(DWORD *x, DWORD *y, DWORD *width, DWORD *height);  // 0x0009E4D4
 // x, y, width, height; the position rounds down, the size up.
 void ScaleRectToScreen(int *rect);                                       // 0x0009FDCC
+
+// (Not in the original.) The device's parameters as given to Direct3D: on
+// the Xbox, strict vsync for the no-vsync modes. The menu draws far faster
+// than the TV shows frames, so without it the GPU and CPU drew several
+// frames a refresh for nothing; the setting itself (and the video page)
+// stay as they are. out is filled and returned. (Draw.cpp)
+D3DPRESENT_PARAMETERS *PacedPresentParameters(const D3DPRESENT_PARAMETERS *params, D3DPRESENT_PARAMETERS *out);
+// Device::Reset with those. (Draw.cpp)
+HRESULT ResetDevice(const D3DPRESENT_PARAMETERS *params);
 
 // A D3DMATRIX that scales, rotates (radians, about X, Y and Z) and
 // translates. The original takes matrix in esi.

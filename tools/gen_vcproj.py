@@ -68,7 +68,7 @@ def main():
     for sub in sorted(os.listdir(os.path.join(ROOT, 'src'))):
         cpps = sorted(glob.glob(os.path.join(ROOT, 'src', sub, '*.cpp')))
         hs = sorted(glob.glob(os.path.join(ROOT, 'src', sub, '*.h')))
-        entries = [file_entry(p) for p in cpps if os.path.relpath(p, ROOT) not in host_only]
+        entries = [file_entry(p) for p in cpps if os.path.relpath(p, ROOT).replace(os.sep, '/') not in host_only]
         entries += [file_entry(p) for p in hs]
         if entries:
             groups.append(('src\\' + sub, entries))
@@ -157,7 +157,7 @@ def main():
            '\tGlobalSection(ExtensibilityGlobals) = postSolution\n\tEndGlobalSection\n'
            '\tGlobalSection(ExtensibilityAddIns) = postSolution\n\tEndGlobalSection\n'
            'EndGlobal\n') % (VCPROJ_TYPE, PROJECT_GUID, PROJECT_GUID, PROJECT_GUID)
-    with open(os.path.join(OUTDIR, 'UnleashX.sln'), 'w', newline='\r\n') as f:
+    with open(os.path.join(OUTDIR, 'UnleashX.sln'), 'w', newline='\r\n', encoding='utf-8') as f:
         f.write('﻿' + sln)
     print('wrote vs2003/UnleashX.sln and vs2003/UnleashX.vcproj (%d files)' %
           sum(len(e) for _, e in groups))

@@ -45,7 +45,8 @@ with a clang/LLVM toolchain for the Xbox's Pentium III.
 
 ### Visual Studio
 
-Open `rxdk/UnleashX.sln` and build **Release|Xbox**. The output is in
+Open `UnleashX.sln` (at the root: the Xbox build, the Windows build and the
+unit tests; the platform picks which) and build **Release|Xbox**. The output is in
 `build\vs-rxdk\Release\`: `default.xbe` (rescrambled for retail kernels right
 after imagebld) and the disc image in
 `XISO\`. The project is generated from Makefile.rxdk's lists and flags by
@@ -171,7 +172,8 @@ network on Winsock). It's for working on the dash without a console or an
 emulator, and for fun; it doesn't replace either.
 
 **Visual Studio 2022** (or later, with "Desktop development with C++"): open
-`win32/UnleashX.sln`, pick `Release` and `x86`, and build. The program is
+`UnleashX.sln` at the root, pick `Release` and `x86`, and build (the unit
+tests build and run with it: UnitTests, whose failures go to the error list). The program is
 `build\vs-win32\Release\UnleashX.exe`, with UnleashX's own files in `disc\`
 next to it. Nothing else is needed (not Python, not the DirectX SDK).
 

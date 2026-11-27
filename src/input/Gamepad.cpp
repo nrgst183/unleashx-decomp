@@ -12,8 +12,16 @@
 CGamepadInput g_gamepadInput;     // 0x00278280
 static int s_nGamepadPort = -1;   // 0x0026CC00
 static int s_nRemotePort = -1;    // 0x0026C99C
-// Quick repeats so far; every sixth one waits again.
+// Quick repeats so far.
 static DWORD s_dwRepeats;         // 0x00278D4C
+
+// (Changed from the original's 0.333s, then 0.085s.) A held direction or
+// button repeats after REPEAT_FIRST, then every REPEAT_NORMAL, and after
+// REPEAT_SPEEDUP repeats every REPEAT_FAST: lists scroll briskly while held.
+#define REPEAT_FIRST 0.25f
+#define REPEAT_NORMAL 0.065f
+#define REPEAT_FAST 0.04f
+#define REPEAT_SPEEDUP 8
 
 // An InputAction forced through XBGAMEPAD::nAction.
 static const int s_forcedActions[14] = {
@@ -254,29 +262,27 @@ int CGamepadInput::GetAction()
 				return 0;
 			m_fPadRepeats = m_fPadRepeats + 1.0f;
 			s_dwRepeats++;
-			m_fPadDelay = 0.085f;
-			if (s_dwRepeats > 5)
-			{
-				s_dwRepeats = 0;
-			}
-			else
-			{
-				m_padTimer.Start();
-				repeating = TRUE;
-			}
+			// (Fix: the original's sixth repeat reset the count without
+			// restarting the timer, which had already run out, so the next
+			// frame repeated again at once: two moves together every sixth,
+			// a hitch in a held scroll.)
+			m_fPadDelay = s_dwRepeats > REPEAT_SPEEDUP ? REPEAT_FAST : REPEAT_NORMAL;
+			m_padTimer.Start();
+			repeating = TRUE;
 		}
 		else
 		{
-			m_fPadDelay = 0.333f;
+			m_fPadDelay = REPEAT_FIRST;
 			m_padTimer.Start();
 			m_fPadRepeats = 0.0f;
+			s_dwRepeats = 0;
 		}
 		// Quirk: stops the remote's timer, not the gamepad's.
 		m_remoteTimer.Stop();
 	}
 	else
 	{
-		m_fPadDelay = 0.333f;
+		m_fPadDelay = REPEAT_FIRST;
 		m_padTimer.Stop();
 		m_fPadRepeats = 0.0f;
 		if (!forced)
@@ -322,13 +328,13 @@ int CGamepadInput::GetAction()
 	// The triggers repeat faster the harder they're pressed.
 	if (pad->bAnalogButtons[6] > 30)
 	{
-		if (m_fPadDelay >= 0.085f)
+		if (m_fPadDelay >= REPEAT_NORMAL)
 			m_fPadDelay = (1.0f - (float)pad->bAnalogButtons[6] * (0.6f / 255.0f)) * 0.085f;
 		return INPUT_LTRIGGER;
 	}
 	if (pad->bAnalogButtons[7] > 30)
 	{
-		if (m_fPadDelay >= 0.085f)
+		if (m_fPadDelay >= REPEAT_NORMAL)
 			m_fPadDelay = (1.0f - (float)pad->bAnalogButtons[7] * (0.6f / 255.0f)) * 0.085f;
 		return INPUT_RTRIGGER;
 	}
@@ -338,13 +344,13 @@ int CGamepadInput::GetAction()
 		return INPUT_RTHUMB_CLICK;
 	if (pad->fY1 > 0.35f || -0.35f > pad->fY1 || -0.35f > pad->fX1 || pad->fX1 > 0.35f)
 	{
-		if (m_fPadDelay >= 0.085f)
+		if (m_fPadDelay >= REPEAT_NORMAL)
 			m_fPadDelay = 0.0255f;
 		return INPUT_LTHUMB;
 	}
 	if (pad->fY2 > 0.35f || -0.35f > pad->fY2 || -0.35f > pad->fX2 || pad->fX2 > 0.35f)
 	{
-		if (m_fPadDelay >= 0.085f)
+		if (m_fPadDelay >= REPEAT_NORMAL)
 			m_fPadDelay = 0.034f;
 		return INPUT_RTHUMB;
 	}

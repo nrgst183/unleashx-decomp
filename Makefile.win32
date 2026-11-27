@@ -1,7 +1,7 @@
 # The Windows build: UnleashX as a native 32-bit Windows program, the Xbox
 # APIs it calls provided by xbox/win32 (Direct3D 8 on Direct3D 9, XInput,
 # sound through waveOut, the Xbox drives as folders, ...). Visual Studio
-# users open win32/UnleashX.sln instead (tools/gen_vcxproj_win32.py); this is
+# users open UnleashX.sln (platform x86) instead (tools/gen_vcxproj_win32.py); this is
 # the same build with llvm-mingw (https://github.com/mstorsjo/llvm-mingw), on
 # Linux, macOS or Windows.
 #

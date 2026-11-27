@@ -601,6 +601,24 @@ void DrawShadeFullScreen(IDirect3DTexture8 *texture, float alpha)
 	          alpha);
 }
 
+D3DPRESENT_PARAMETERS *PacedPresentParameters(const D3DPRESENT_PARAMETERS *params, D3DPRESENT_PARAMETERS *out)
+{
+	*out = *params;
+#ifndef UX_WIN32
+	// (The Windows build paces its own frames: WinGfx.cpp.)
+	if (out->FullScreen_PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE ||
+	    out->FullScreen_PresentationInterval == D3DPRESENT_INTERVAL_ONE_OR_IMMEDIATE)
+		out->FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+#endif
+	return out;
+}
+
+HRESULT ResetDevice(const D3DPRESENT_PARAMETERS *params)
+{
+	D3DPRESENT_PARAMETERS paced;
+	return g_pd3dDevice->Reset(PacedPresentParameters(params, &paced));
+}
+
 // 0x0009F342 (matrix in esi): scale, then rotation, then translation.
 void BuildWorldMatrix(float *matrix, float x, float y, float z, float scaleX, float scaleY, float scaleZ,
                       float rotationX, float rotationY, float rotationZ)

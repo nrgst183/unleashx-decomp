@@ -684,10 +684,16 @@ void CVirtualKeyboard::DrawText(float x, float y)
 	device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
 	device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TFACTOR);
 	device->SetRenderState(D3DRS_TEXTUREFACTOR, g_colorScheme.KB_KEY_TEXTCOLOR);
-	y -= m_fKeyHeight * 0.5f;
+	// (Fix: as tall as the text box, inside it, not a key's height (taller
+	// than the box, so it stuck out above and below), and not left of the
+	// box: its arms reached past the box's edge before the first letter.)
 	float half = m_fScaleX * 2.0f;
-	float top = y + 2.0f;
-	float bottom = y + m_fKeyHeight;
+	float margin = m_fScaleX * 4.0f;
+	float top = y - m_fTextHeight * 0.5f + margin;
+	float bottom = y + m_fTextHeight * 0.5f - margin;
+	float boxLeft = m_fX + 10.0f;
+	if (x - half < boxLeft + 1.0f)
+		x = boxLeft + 1.0f + half;
 	device->Begin(D3DPT_LINELIST);
 	device->SetVertexData4f(D3DVSDE_VERTEX, x - half, top, 1.0f, 1.0f);
 	device->SetVertexData4f(D3DVSDE_VERTEX, x + half, top, 1.0f, 1.0f);

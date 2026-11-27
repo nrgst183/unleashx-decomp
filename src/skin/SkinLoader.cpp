@@ -60,7 +60,11 @@ static BOOL LoadInternalSkin(int index, CXmlDocument *doc)
 	void *section = XLoadSection("INT_SKINS");
 	if (section != NULL)
 	{
-		HZIP zip = OpenZip(section, INT_SKINS_SIZE, ZIP_MEMORY);
+		// (Fix: the section's own size when it can be had; see
+		// MediaFileSize in Resources.cpp.)
+		HANDLE handle = XGetSectionHandle("INT_SKINS");
+		DWORD size = handle != NULL && handle != INVALID_HANDLE_VALUE ? XGetSectionSize(handle) : 0;
+		HZIP zip = OpenZip(section, size != 0 ? size : (DWORD)INT_SKINS_SIZE, ZIP_MEMORY);
 		if (zip != NULL)
 		{
 			ZIPENTRY ze;

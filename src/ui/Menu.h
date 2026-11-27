@@ -126,6 +126,8 @@ public:
 	HRESULT SelectPrevious();
 	HRESULT SelectNext();
 	void StartScroll(int direction);
+	// (Not in the original.) How much of a row a list glide has left: 1 to 0.
+	float GlideLeft() const;
 	void FinishMove(CSound *sound);
 	int ItemUnderPointer();
 	// The pointer over the item's on-screen rectangle. (Menu.cpp)
@@ -226,6 +228,11 @@ public:
 	BOOL m_bScrollText;                       // +0xF38 <Menu Scroll>: a selected text too long for its line scrolls
 	DWORD m_dwMarqueeTick;                    // +0xF3C when the selected text scrolls next
 	float m_fMarqueeOffset;                   // +0xF40 how far it has scrolled
+	// (Not in the original.) When the list last started to glide, and
+	// whether this glide follows another closely (a held direction): then it
+	// moves at an even pace, to end as the next one starts.
+	DWORD m_dwLastGlide;
+	BOOL m_bGlideEven;
 };
 
 // Passwords already entered for locked items this session.

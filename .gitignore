@@ -24,4 +24,40 @@ CLAUDE.md
 # Visual Studio (per-user state and caches)
 .vs/
 *.vcxproj.user
+*.vcproj.*.user
 *.suo
+*.ncb
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+ipch/
+*.aps
+
+# Build output that lands outside build/ (an IDE or a compiler run by hand)
+[Dd]ebug/
+[Rr]elease/
+x64/
+out/
+*.obj
+*.o
+*.pdb
+*.ilk
+*.idb
+*.exp
+*.tlog
+*.lastbuildstate
+*.log
+*.xbe
+*.iso
+
+# Python, editors and the OS
+*.pyc
+.venv/
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

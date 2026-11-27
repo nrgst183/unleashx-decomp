@@ -21,7 +21,7 @@ LIBS := $(COMMON) $(XML) $(SETTINGS) $(SYSTEM) $(NET) $(SKIN) $(UI) $(RENDER) $(
 STUBS := tests/stubs.cpp tests/todo_stubs.cpp tests/skin_stubs.cpp tests/fileio_host.cpp tests/ftpparse_host.cpp tests/ftplog_host.cpp
 HEADERS := $(wildcard src/*/*.h) src/ui/StringTable.inc
 
-TESTS := build/xbepatch_test build/xml_roundtrip build/config_test build/skin_test build/language_test build/skintext_test build/xbe_test build/menuscan_test build/ftp_test build/fileutil_test build/xip_test build/http_test build/ftpclient_test build/soundtrackdb_test build/newsfeed_test build/fonttable_test
+TESTS := build/xbepatch_test build/xml_roundtrip build/config_test build/skin_test build/language_test build/skintext_test build/xbe_test build/menuscan_test build/ftp_test build/fileutil_test build/xip_test build/http_test build/ftpclient_test build/soundtrackdb_test build/newsfeed_test build/fonttable_test build/unit_test
 
 # Syntax-checked but not linked: hardware access, or too much of what they
 # call isn't decompiled yet.
@@ -106,6 +106,7 @@ endif
 	UNLEASHX_ROOT=build/testroot build/soundtrackdb_test
 	build/newsfeed_test
 	build/fonttable_test
+	build/unit_test
 	$(if $(HAVE_RELEASE),build/xbepatch_test,@echo "(xbepatch_test skipped: no $(RELEASE_XBE))")
 	@if command -v xorriso >/dev/null; then $(MAKE) --no-print-directory build/iso9660_test build/testdisc.iso && \
 		build/iso9660_test build/testdisc.iso; else echo "(iso9660_test skipped: no xorriso)"; fi

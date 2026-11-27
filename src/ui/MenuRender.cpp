@@ -221,9 +221,14 @@ HRESULT CMenu::Render()
 						last = m_nLastVisible;
 				}
 			}
-			// Smooth scrolling: the lines slide a pixel less each 60 Hz frame.
+			// Smooth scrolling: the lines slide back to their places.
 			// (Fix: by time; the original took a pixel off each frame more
-			// than 5 ms apart.)
+			// than 5 ms apart. And a whole row (see StartScroll), with the
+			// rows going and coming drawn as they slide: the original slid
+			// 20 pixels, left a gap where the row going had been, and drew
+			// the row coming in at the bottom only once the slide was nearly
+			// over, so going down hitched.)
+			float glide = 0.0f;   // how far the rows are from their places (+ lower)
 			if (m_nScrollDirection != 0)
 			{
 				m_fScrollSpeed -= FrameScale();
@@ -235,7 +240,19 @@ HRESULT CMenu::Render()
 				}
 				else
 				{
-					rowY = (float)m_nScrollDirection * m_fScrollSpeed + rowY;
+					glide = (float)m_nScrollDirection * GlideLeft() * lineStep;
+					rowY = glide + rowY;
+					if (glide > 0.0f && first > 0 && !m_bFixed)
+					{
+						// Down: the row going, above the first.
+						first--;
+						rowY = rowY - lineStep;
+					}
+					else if (glide < 0.0f && last != -1 && last + 1 < (int)m_nItemCount && !m_bFixed)
+					{
+						// Up: the row going, below the last.
+						last++;
+					}
 				}
 			}
 			// Keep the selection inside the visible range.
@@ -296,7 +313,7 @@ HRESULT CMenu::Render()
 								// The highlight bar (it stays put while the
 								// lines slide).
 								if (g_colorScheme.MENU_ACTIVEBORDERCOLOR != 0 || g_colorScheme.MENU_ACTIVEBACKCOLOR != 0)
-									DrawRect(rowX + 1.0f, rowY - (float)m_nScrollDirection * m_fScrollSpeed, barWidth,
+									DrawRect(rowX + 1.0f, rowY - glide, barWidth,
 									         lineHeight, g_colorScheme.MENU_ACTIVEBORDERCOLOR,
 									         g_colorScheme.MENU_ACTIVEBACKCOLOR, 0.9f, 1);
 								if (m_bShowText)
@@ -312,7 +329,7 @@ HRESULT CMenu::Render()
 										BOOL step = (long)(GetTickCount() - m_dwMarqueeTick) > 0;
 										D3DRECT line;
 										line.x1 = (long)(iconWidth + rowX);
-										float top = rowY - (float)m_nScrollDirection * m_fScrollSpeed;
+										float top = rowY - glide;
 										line.y1 = (long)(top > (float)clip.y1 ? top : (float)clip.y1);
 										float right = textWidth + rowX;
 										line.x2 = (long)(right > (float)clip.x2 ? (float)clip.x2 : right);
@@ -362,7 +379,7 @@ HRESULT CMenu::Render()
 						KeepSelectedIcon(this, item, index, s_nIconOf);
 
 						rowY = rowY + lineStep;
-						if (rowY >= bottom)
+						if (rowY - (glide > 0.0f ? glide : 0.0f) >= bottom)
 						{
 							// Full: scroll the start so the last row fits.
 							if (m_nLastVisible != index && (UINT)m_nLastVisible > (UINT)m_nFirstVisible)
@@ -421,7 +438,7 @@ HRESULT CMenu::Render()
 			if (m_bShowArrows)
 			{
 				// Pulsing arrows above and below when there's more.
-				rowY = rowY - (float)m_nScrollDirection * m_fScrollSpeed;
+				rowY = rowY - glide;
 				float arrowWidth = 10.0f;
 				float arrowHeight = 10.0f;
 				ScaleToScreen(NULL, &arrowWidth, NULL, &arrowHeight, FALSE);
@@ -564,9 +581,17 @@ void CMenu::RenderHorizontal()
 		m_fScrollSpeed -= FrameScale();   // (fix: by time, as in Render)
 		m_dwScrollStart = GetTickCount();
 		if (m_nScrollDirection != 0 && m_fScrollSpeed <= 0.0f)
+		{
 			m_nScrollDirection = 0;
+		}
 		else
-			itemX = (float)m_nScrollDirection * m_fScrollSpeed + itemX;
+		{
+			// (The original's 20 pixels, but at the screen's scale, and
+			// timed as the vertical list's: see StartScroll.)
+			float distance = 20.0f;
+			ScaleToScreen(NULL, &distance, NULL, NULL, FALSE);
+			itemX = (float)m_nScrollDirection * GlideLeft() * distance + itemX;
+		}
 	}
 	for (int shown = last - first; shown < m_nSelected - m_nFirstVisible; shown++)
 		last++;

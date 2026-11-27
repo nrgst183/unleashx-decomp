@@ -4,6 +4,7 @@
 #include "../app/XBApp.h"
 
 #include "../input/XBInput.h"
+#include "../render/Draw.h"
 #include "../render/Texture.h"
 
 CXBApplicationEx *g_pApplication;          // 0x00277660
@@ -50,8 +51,11 @@ HRESULT CXBApplicationEx::Create()
 	m_d3dpp.EnableAutoDepthStencil = TRUE;
 	m_d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
 	m_d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+	// (Paced: see PacedPresentParameters, Draw.h.)
+	D3DPRESENT_PARAMETERS paced;
 	HRESULT hr = Direct3D_CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, NULL, D3DCREATE_HARDWARE_VERTEXPROCESSING,
-	                                   XDK_CAST(D3DPRESENT_PARAMETERS *, &m_d3dpp), &g_pd3dDevice);
+	                                   PacedPresentParameters(XDK_CAST(D3DPRESENT_PARAMETERS *, &m_d3dpp), &paced),
+	                                   &g_pd3dDevice);
 	if (FAILED(hr))
 		return hr;
 	m_pd3dDevice = g_pd3dDevice;

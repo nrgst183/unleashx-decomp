@@ -628,22 +628,106 @@ void _endthreadex(unsigned int)
 {
 }
 
-int MultiByteToWideChar(unsigned, DWORD, const char *src, int srcLen, wchar_t *dst, int dstLen)
+// UTF-8 (code page 65001) decoded as the Xbox does, to UTF-16 characters
+// (the Xbox's wchar_t): 0 for a bad sequence with MB_ERR_INVALID_CHARS (8),
+// else U+FFFD. Any other code page: Latin-1, byte for byte.
+int MultiByteToWideChar(unsigned codePage, DWORD flags, const char *src, int srcLen, wchar_t *dst, int dstLen)
 {
+	if (codePage != 65001)
+	{
+		int n = 0;
+		for (; n < srcLen && n < dstLen; n++)
+			dst[n] = (unsigned char)src[n];
+		return n;
+	}
+	if (srcLen < 0)
+		srcLen = (int)strlen(src) + 1;
+	const unsigned char *s = (const unsigned char *)src;
 	int n = 0;
-	for (; n < srcLen && n < dstLen; n++)
-		dst[n] = (unsigned char)src[n];
+	for (int i = 0; i < srcLen;)
+	{
+		unsigned int c = s[i];
+		int extra = c < 0x80 ? 0 : (c & 0xE0) == 0xC0 ? 1 : (c & 0xF0) == 0xE0 ? 2 : -1;
+		unsigned int min = extra == 1 ? 0x80 : 0x800;
+		bool bad = extra < 0 || i + extra >= srcLen;   // (or cut short)
+		if (extra > 0 && !bad)
+		{
+			c &= extra == 1 ? 0x1F : 0x0F;
+			for (int k = 1; k <= extra; k++)
+			{
+				if ((s[i + k] & 0xC0) != 0x80)
+				{
+					bad = true;
+					break;
+				}
+				c = (c << 6) | (s[i + k] & 0x3F);
+			}
+			if (!bad && (c < min || (c >= 0xD800 && c <= 0xDFFF)))
+				bad = true;
+		}
+		if (bad)
+		{
+			if (flags & 8)
+				return 0;
+			c = 0xFFFD;
+			extra = 0;
+		}
+		if (dstLen != 0)
+		{
+			if (n >= dstLen)
+				return 0;
+			dst[n] = (wchar_t)c;
+		}
+		n++;
+		i += extra + 1;
+	}
 	return n;
 }
 
-int WideCharToMultiByte(UINT, DWORD, const wchar_t *wide, int wideLength, char *multiByte, int multiByteLength,
-                        const char *, BOOL *)
+// UTF-8 for code page 65001 (characters past U+FFFF aren't the Xbox's);
+// otherwise ASCII, '?' for the rest.
+int WideCharToMultiByte(UINT codePage, DWORD, const wchar_t *wide, int wideLength, char *multiByte,
+                        int multiByteLength, const char *, BOOL *)
 {
 	if (wideLength < 0)
 		wideLength = (int)wcslen(wide) + 1;
 	int n = 0;
-	for (; n < wideLength && n < multiByteLength; n++)
-		multiByte[n] = wide[n] < 0x80 ? (char)wide[n] : '?';
+	if (codePage != 65001)
+	{
+		for (; n < wideLength && n < multiByteLength; n++)
+			multiByte[n] = wide[n] < 0x80 ? (char)wide[n] : '?';
+		return n;
+	}
+	for (int i = 0; i < wideLength; i++)
+	{
+		unsigned int c = (unsigned int)wide[i];
+		if (c > 0xFFFF || (c >= 0xD800 && c <= 0xDFFF))
+			c = 0xFFFD;
+		unsigned char bytes[3];
+		int count = 0;
+		if (c < 0x80)
+		{
+			bytes[count++] = (unsigned char)c;
+		}
+		else if (c < 0x800)
+		{
+			bytes[count++] = (unsigned char)(0xC0 | (c >> 6));
+			bytes[count++] = (unsigned char)(0x80 | (c & 0x3F));
+		}
+		else
+		{
+			bytes[count++] = (unsigned char)(0xE0 | (c >> 12));
+			bytes[count++] = (unsigned char)(0x80 | ((c >> 6) & 0x3F));
+			bytes[count++] = (unsigned char)(0x80 | (c & 0x3F));
+		}
+		if (multiByteLength != 0)
+		{
+			if (n + count > multiByteLength)
+				return 0;
+			memcpy(multiByte + n, bytes, count);
+		}
+		n += count;
+	}
 	return n;
 }
 

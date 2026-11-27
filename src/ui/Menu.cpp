@@ -95,6 +95,8 @@ CMenu::CMenu() : m_md5(NULL, -1)
 	m_fScrollRemaining = 0.0f;
 	m_dwScrollStart = 0;
 	m_bSmoothScroll = TRUE;
+	m_dwLastGlide = 0;
+	m_bGlideEven = FALSE;
 	m_bBatchRunning = FALSE;
 	m_pBatchList = NULL;
 	m_pBatchSubList = NULL;
@@ -1145,17 +1147,54 @@ static void UnlockPendingItem(CXmlElement *element)
 // list, fps * 1.2 for skin item positions) and counted it down a step a
 // frame, which only came out right at 60 fps, and with the list's the wrong
 // way round. It now starts at its 60 fps value and counts down by time.)
+// (Also: a list glides a whole row, its own height on the screen, rather than
+// 20 pixels (a part of a row, the less the larger the screen), in 8 60 Hz
+// frames easing out rather than 20. A glide that follows the last closely
+// (a held direction) takes the time between them, at an even pace, so the
+// list moves steadily instead of in bursts. For a list, m_fScrollSpeed is
+// the glide's 60 Hz frames left and m_fScrollRemaining its length.)
+#define GLIDE_FRAMES 8.0f
+#define GLIDE_FOLLOW_MS 200
 void CMenu::StartScroll(int direction)
 {
 	if (!m_bSmoothScroll)
 		return;
 	m_nScrollDirection = direction;
-	m_dwScrollStart = GetTickCount();
+	DWORD now = GetTickCount();
+	m_dwScrollStart = now;
 	if (m_nSkinVisibleItems == 0 || m_pItemPositions == NULL)
-		m_fScrollSpeed = 1200.0f / FRAME_TUNED_HZ;
+	{
+		DWORD since = now - m_dwLastGlide;
+		float frames = GLIDE_FRAMES;
+		m_bGlideEven = since < GLIDE_FOLLOW_MS;
+		if (m_bGlideEven)
+		{
+			frames = (float)since * (FRAME_TUNED_HZ / 1000.0f);
+			if (frames < 2.0f)
+				frames = 2.0f;
+			if (frames > GLIDE_FRAMES)
+				frames = GLIDE_FRAMES;
+		}
+		m_fScrollSpeed = frames;
+	}
 	else
+	{
 		m_fScrollSpeed = FRAME_TUNED_HZ * 1.2f;
+	}
+	m_dwLastGlide = now;
 	m_fScrollRemaining = m_fScrollSpeed;
+}
+
+// (Not in the original.) How far a list glide has left to go, as a part of a
+// row: 1 as it starts, 0 at its end.
+float CMenu::GlideLeft() const
+{
+	if (m_nScrollDirection == 0 || m_fScrollRemaining <= 0.0f || m_fScrollSpeed <= 0.0f)
+		return 0.0f;
+	float f = m_fScrollSpeed / m_fScrollRemaining;
+	if (f > 1.0f)
+		f = 1.0f;
+	return m_bGlideEven ? f : f * f;   // (easing out)
 }
 
 // Up: the nearest selectable item above (wrapping to the last item).
