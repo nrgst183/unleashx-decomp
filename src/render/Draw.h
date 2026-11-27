@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../common/Platform.h"
+#include "D3D.h"   // (D3DPRESENT_PARAMETERS, for PacedPresentParameters)
 
 struct IDirect3DTexture8;
 class CXBFont;
